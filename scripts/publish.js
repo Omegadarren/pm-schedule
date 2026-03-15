@@ -71,8 +71,8 @@ try {
   git('commit -m "Deploy to GitHub Pages"');
   run(`git push --force "${remoteUrl}" gh-pages`, { cwd: distDir });
 
-  // Clean up temp repo
-  fs.rmSync(tempGit, { recursive: true, force: true });
+  // Clean up temp repo (best-effort — git may briefly hold locks on Windows)
+  try { fs.rmSync(tempGit, { recursive: true, force: true }); } catch (_) {}
 
   console.log(`\n✅  Published!  →  https://${githubUser}.github.io/${repoName}\n`);
   process.exit(0);
