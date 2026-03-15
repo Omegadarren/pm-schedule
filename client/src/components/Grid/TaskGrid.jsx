@@ -60,7 +60,12 @@ function NameCell({ value, data, collapsedRef, onToggleSection }) {
     return <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)' }}>{value}</span>;
   }
   const depth = data?.wbs ? (data.wbs.match(/\./g) || []).length : 0;
-  return <span style={{ paddingLeft: depth * 8 }}>{value}</span>;
+  const isComplete = data?.status === 'complete';
+  return (
+    <span style={{ paddingLeft: depth * 8, color: isComplete ? 'var(--text-muted)' : 'inherit', opacity: isComplete ? 0.55 : 1, textDecoration: isComplete ? 'line-through' : 'none' }}>
+      {value}
+    </span>
+  );
 }
 function CostCell({ value, data }) {
   const n = Number(value);
@@ -257,6 +262,9 @@ function ContextMenu({ menu, onClose, onAction }) {
     ],
     task: [
       { label: '＋  Add Task Below', action: 'addTaskBelow' },
+      { sep: true },
+      { label: '✔  Mark Complete', action: 'markComplete' },
+      { label: '↺  Mark Incomplete', action: 'markIncomplete' },
       { sep: true },
       { label: '✕  Delete Task', action: 'deleteTask', danger: true },
     ],
@@ -895,6 +903,18 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
       if (onRefetch) await onRefetch();
     }
     if (action === 'deleteTask' && row) await onDelete(row.id);
+    if (action === 'markComplete' && row) {
+      const updated = { ...row, status: 'complete', percent_complete: 100 };
+      allTasksRef.current = allTasksRef.current.map((x) => (x.id === row.id ? updated : x));
+      gridRef.current?.api?.applyTransaction({ update: [updated] });
+      await onUpdate(row.id, updated);
+    }
+    if (action === 'markIncomplete' && row) {
+      const updated = { ...row, status: 'not_started', percent_complete: 0 };
+      allTasksRef.current = allTasksRef.current.map((x) => (x.id === row.id ? updated : x));
+      gridRef.current?.api?.applyTransaction({ update: [updated] });
+      await onUpdate(row.id, updated);
+    }
     if (action === 'deleteSection' && row) {
       for (const c of all.filter((t) => t.wbs?.startsWith(row.wbs + '.'))) await onDelete(c.id);
       await onDelete(row.id);
