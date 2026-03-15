@@ -39,7 +39,23 @@ function WbsCell({ value, data }) {
   const depth = (value.match(/\./g) || []).length;
   return <span style={{ color: 'var(--text-muted)', paddingLeft: depth * 12 }}>{value}</span>;
 }
-function NameCell({ value, data }) {
+function NameCell({ value, data, collapsedRef, onToggleSection }) {
+  if (data?._isSection && data?.wbs) {
+    const isCollapsed = collapsedRef?.current?.has(data.wbs) ?? false;
+    return (
+      <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+        <span
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onToggleSection?.(data.wbs); }}
+          title={isCollapsed ? 'Expand section' : 'Collapse section'}
+          style={{ cursor: 'pointer', fontSize: 11, opacity: 0.7, userSelect: 'none', lineHeight: 1, minWidth: 14, flexShrink: 0, color: 'var(--text-muted)' }}
+        >
+          {isCollapsed ? '▶' : '▼'}
+        </span>
+        {value}
+      </span>
+    );
+  }
   if (data?._isSection) {
     return <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)' }}>{value}</span>;
   }
@@ -515,13 +531,13 @@ const CostEditor = forwardRef(function CostEditor({ value, hourlyRate, stopEditi
   );
 });
 
-function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false) {
+function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false, collapsedRef = null, onToggleSection = null) {
   const ed = (fn) => readOnly ? false : fn; // wrap editable functions
   return [
     { colId: 'drag', headerName: '', width: 36, rowDrag: !readOnly, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
     { colId: 'link', headerName: '', width: readOnly ? 0 : 36, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, hide: readOnly, cellRenderer: LinkCell, cellRendererParams: { onLinkStart, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     { field: 'wbs', headerName: 'WBS', width: 70, sortable: true, cellRenderer: WbsCell, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
+    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellRendererParams: { collapsedRef, onToggleSection }, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
     { field: 'start_date', headerName: 'Start', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'end_date', headerName: 'End', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'duration_days', headerName: 'Days', width: 78, editable: false, suppressClickEdit: true, sortable: true, cellRenderer: DurationCell, cellRendererParams: { onDurationUpdate, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
@@ -626,6 +642,18 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   const [showColChooser, setShowColChooser] = useState(false);
   const [colChooserPos, setColChooserPos] = useState({ top: 0, left: 0 });
   const colBtnRef = useRef(null);
+
+  // ── Collapse/expand sections ────────────────────────────────────────────
+  const collapsedRef = useRef(new Set());
+  const [collapseVersion, setCollapseVersion] = useState(0);
+  const toggleSection = useCallback((wbs) => {
+    const next = new Set(collapsedRef.current);
+    if (next.has(wbs)) next.delete(wbs); else next.add(wbs);
+    collapsedRef.current = next;
+    setCollapseVersion((n) => n + 1);
+    // Refresh name cells so chevron direction updates immediately
+    setTimeout(() => gridRef.current?.api?.refreshCells({ force: true, columns: ['name'] }), 0);
+  }, []);
 
   const allTasksRef = useRef(tasks);
   allTasksRef.current = tasks;
@@ -799,17 +827,27 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     await onUpdate(taskId, updated);
   }, [onUpdate]);
 
-  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly]);
+  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, collapsedRef, toggleSection), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, toggleSection]);
 
   // Overlay section cost + duration = sum of children; mark section rows
-  const rowData = useMemo(() => tasks.map((t) => {
-    const isSection = !!(t.wbs && !t.wbs.includes('.'));
-    if (!isSection) return t;
-    const children = tasks.filter((c) => c.wbs?.startsWith(t.wbs + '.'));
-    const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
-    const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
-    return { ...t, _isSection: true, cost: childCost, duration_days: childDuration };
-  }), [tasks]);
+  // Filter out children of collapsed sections
+  const rowData = useMemo(() => {
+    const collapsed = collapsedRef.current;
+    return tasks
+      .map((t) => {
+        const isSection = !!(t.wbs && !t.wbs.includes('.'));
+        if (!isSection) return t;
+        const children = tasks.filter((c) => c.wbs?.startsWith(t.wbs + '.'));
+        const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
+        const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
+        return { ...t, _isSection: true, cost: childCost, duration_days: childDuration };
+      })
+      .filter((t) => {
+        if (!t.wbs || !t.wbs.includes('.')) return true; // always show sections + grand total
+        const parentWbs = t.wbs.split('.')[0];
+        return !collapsed.has(parentWbs);
+      });
+  }, [tasks, collapseVersion]);
 
   const grandTotalRow = useMemo(() => {
     const total = tasks.filter((t) => !t.wbs || t.wbs.includes('.')).reduce((s, t) => s + (Number(t.cost) || 0), 0);
