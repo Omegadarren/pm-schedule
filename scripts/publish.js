@@ -37,6 +37,18 @@ try {
 
   // ── 2. Build static Vite bundle ─────────────────────────────────────────────
   console.log('\n🔨  Step 2/3 — Building static app...');
+
+  // Delete dist entirely before building so no stale .git from a previous
+  // publish run can block Step 3's git init.
+  const distDir = path.join(clientDir, 'dist');
+  if (fs.existsSync(distDir)) {
+    try {
+      fs.rmSync(distDir, { recursive: true, force: true });
+    } catch (_) {
+      try { execSync(`rmdir /s /q "${distDir}"`, { stdio: 'pipe', shell: true }); } catch (_2) {}
+    }
+  }
+
   const buildEnv = {
     ...process.env,
     VITE_STATIC_MODE : 'true',
@@ -57,21 +69,7 @@ try {
   // ── 3. Push dist → gh-pages ─────────────────────────────────────────────────
   console.log('\n🚀  Step 3/3 — Pushing to GitHub Pages...');
 
-  const distDir = path.join(clientDir, 'dist');
-  const tempGit = path.join(distDir, '.git');
   const git = (cmd) => run(`git ${cmd}`, { cwd: distDir });
-
-  // Remove any previous temp repo so we start clean.
-  // Use a shell rmdir as fallback because git may have left locked handles on Windows.
-  if (fs.existsSync(tempGit)) {
-    try {
-      fs.rmSync(tempGit, { recursive: true, force: true });
-    } catch (_) {
-      try {
-        execSync(`rmdir /s /q "${tempGit}"`, { stdio: 'pipe', shell: true });
-      } catch (_2) { /* ignore — git init will overwrite */ }
-    }
-  }
 
   git('init -b gh-pages');
   git('config user.email "deploy@pm-schedule"');
@@ -79,9 +77,6 @@ try {
   git('add -A');
   git('commit -m "Deploy to GitHub Pages"');
   run(`git push --force "${remoteUrl}" gh-pages`, { cwd: distDir });
-
-  // Clean up temp repo (best-effort — git may briefly hold locks on Windows)
-  try { fs.rmSync(tempGit, { recursive: true, force: true }); } catch (_) {}
 
   console.log(`\n✅  Published!  →  https://${githubUser}.github.io/${repoName}\n`);
   process.exit(0);
