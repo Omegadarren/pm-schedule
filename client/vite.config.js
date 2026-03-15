@@ -5,6 +5,11 @@ export default defineConfig({
   // VITE_BASE is injected by publish.js when building for GitHub Pages
   base: process.env.VITE_BASE || '/',
   plugins: [react()],
+  build: {
+    // When publish.js builds for GitHub Pages it does its own dist cleanup.
+    // Disabling emptyOutDir avoids Windows EBUSY errors on locked files (e.g. web-data.json).
+    emptyOutDir: process.env.VITE_STATIC_MODE !== 'true',
+  },
   server: {
     port: 5173,
     proxy: {

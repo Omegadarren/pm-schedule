@@ -40,6 +40,23 @@ try {
   console.log('\n🔨  Step 2/3 — Building static app...');
 
   const distDir  = path.join(clientDir, 'dist');
+
+  // Manually wipe dist/ before the build so stale assets don't accumulate.
+  // We do this ourselves (instead of Vite's emptyOutDir) to avoid Windows
+  // EBUSY errors on locked files.  Any file that can't be removed is skipped —
+  // Vite will overwrite the important ones and we copy the whole dir to a
+  // temp folder for the git push anyway.
+  if (fs.existsSync(distDir)) {
+    try {
+      const entries = fs.readdirSync(distDir);
+      for (const entry of entries) {
+        try {
+          fs.rmSync(path.join(distDir, entry), { recursive: true, force: true });
+        } catch (_) { /* skip locked files */ }
+      }
+    } catch (_) { /* skip if dist itself can't be read */ }
+  }
+
   const buildEnv = {
     ...process.env,
     VITE_STATIC_MODE : 'true',
