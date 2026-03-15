@@ -66,14 +66,41 @@ try {
   try {
     fs.cpSync(distDir, tmpDir, { recursive: true });
 
+    // Nuke any .git that may have been copied in or left from a prior run.
+    const gitDir = path.join(tmpDir, '.git');
+    if (fs.existsSync(gitDir)) {
+      try { fs.rmSync(gitDir, { recursive: true, force: true }); } catch (_) {}
+    }
+
     const git = (cmd) => run(`git ${cmd}`, { cwd: tmpDir });
 
     git('init -b gh-pages');
     git('config user.email "deploy@pm-schedule"');
     git('config user.name "PM Schedule Deploy"');
+    git(`remote add origin "${remoteUrl}"`);
+
+    // Fetch the current remote gh-pages so git knows its true SHA.
+    // This prevents the "expected X but got Y" ref-lock rejection on push.
+    // Ignore errors — the branch may not exist yet on a first deploy.
+    try { git('fetch --depth=1 origin gh-pages'); } catch (_) {}
+
     git('add -A');
     git('commit -m "Deploy to GitHub Pages"');
-    run(`git push --force "${remoteUrl}" gh-pages`, { cwd: tmpDir });
+
+    // Retry push up to 3 times to handle transient GitHub ref-lock races.
+    let pushed = false;
+    for (let attempt = 1; attempt <= 3 && !pushed; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`\n⏳  Retrying push (attempt ${attempt}/3)...`);
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+        }
+        git('push --force origin gh-pages');
+        pushed = true;
+      } catch (pushErr) {
+        if (attempt === 3) throw pushErr;
+      }
+    }
   } finally {
     // Best-effort cleanup of the temp dir — ignore errors.
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
