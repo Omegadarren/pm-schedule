@@ -62,7 +62,7 @@ function NameCell({ value, data, collapsedRef, onToggleSection }) {
   const depth = data?.wbs ? (data.wbs.match(/\./g) || []).length : 0;
   const isComplete = data?.status === 'complete';
   return (
-    <span style={{ paddingLeft: depth * 8, color: isComplete ? 'var(--text-muted)' : 'inherit', opacity: isComplete ? 0.55 : 1, textDecoration: isComplete ? 'line-through' : 'none' }}>
+    <span style={{ paddingLeft: depth * 8, textDecoration: isComplete ? 'line-through' : 'none' }}>
       {value}
     </span>
   );
@@ -1167,7 +1167,10 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
             rowHeight={40}
             headerHeight={38}
             pinnedBottomRowData={grandTotalRow}
-            rowClassRules={{ 'section-header-row': (p) => !!p.data?._isSection }}
+            rowClassRules={{
+              'section-header-row': (p) => !!p.data?._isSection,
+              'task-complete-row':  (p) => !p.data?._isSection && p.data?.status === 'complete',
+            }}
             rowDragManaged
             suppressMoveWhenRowDragging
             onRowDragEnd={onRowDragEnd}

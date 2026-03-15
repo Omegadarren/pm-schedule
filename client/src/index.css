@@ -311,3 +311,7 @@ html, body, #root {
 }
 .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* ── Completed task rows ──────────────────────────────────────────────────── */
+.task-complete-row .ag-cell { opacity: 0.42; }
+.task-complete-row { background: rgba(0,0,0,0.08) !important; }
