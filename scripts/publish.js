@@ -5,6 +5,7 @@
 const { execSync } = require('child_process');
 const path         = require('path');
 const fs           = require('fs');
+const os           = require('os');
 
 const rootDir   = path.join(__dirname, '..');
 const clientDir = path.join(rootDir, 'client');
@@ -38,17 +39,7 @@ try {
   // ── 2. Build static Vite bundle ─────────────────────────────────────────────
   console.log('\n🔨  Step 2/3 — Building static app...');
 
-  // Delete dist entirely before building so no stale .git from a previous
-  // publish run can block Step 3's git init.
-  const distDir = path.join(clientDir, 'dist');
-  if (fs.existsSync(distDir)) {
-    try {
-      fs.rmSync(distDir, { recursive: true, force: true });
-    } catch (_) {
-      try { execSync(`rmdir /s /q "${distDir}"`, { stdio: 'pipe', shell: true }); } catch (_2) {}
-    }
-  }
-
+  const distDir  = path.join(clientDir, 'dist');
   const buildEnv = {
     ...process.env,
     VITE_STATIC_MODE : 'true',
@@ -58,8 +49,8 @@ try {
     run('npm run build', { cwd: clientDir, env: buildEnv });
   } catch (e) {
     // Vite may exit non-zero due to deprecation warnings from 3rd-party SCSS.
-    // If the dist/index.html was produced the build is usable.
-    const distHtml = path.join(clientDir, 'dist', 'index.html');
+    // If dist/index.html was produced the build is usable.
+    const distHtml = path.join(distDir, 'index.html');
     if (!fs.existsSync(distHtml)) {
       throw new Error('Build failed — dist/index.html was not produced.\n' + (e.message || e));
     }
@@ -67,16 +58,26 @@ try {
   }
 
   // ── 3. Push dist → gh-pages ─────────────────────────────────────────────────
+  // Copy dist into a fresh OS temp dir so there is NEVER a stale .git folder.
+  // This sidesteps Windows file-locking issues entirely.
   console.log('\n🚀  Step 3/3 — Pushing to GitHub Pages...');
 
-  const git = (cmd) => run(`git ${cmd}`, { cwd: distDir });
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-deploy-'));
+  try {
+    fs.cpSync(distDir, tmpDir, { recursive: true });
 
-  git('init -b gh-pages');
-  git('config user.email "deploy@pm-schedule"');
-  git('config user.name "PM Schedule Deploy"');
-  git('add -A');
-  git('commit -m "Deploy to GitHub Pages"');
-  run(`git push --force "${remoteUrl}" gh-pages`, { cwd: distDir });
+    const git = (cmd) => run(`git ${cmd}`, { cwd: tmpDir });
+
+    git('init -b gh-pages');
+    git('config user.email "deploy@pm-schedule"');
+    git('config user.name "PM Schedule Deploy"');
+    git('add -A');
+    git('commit -m "Deploy to GitHub Pages"');
+    run(`git push --force "${remoteUrl}" gh-pages`, { cwd: tmpDir });
+  } finally {
+    // Best-effort cleanup of the temp dir — ignore errors.
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+  }
 
   console.log(`\n✅  Published!  →  https://${githubUser}.github.io/${repoName}\n`);
   process.exit(0);
