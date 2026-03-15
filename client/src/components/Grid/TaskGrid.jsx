@@ -42,6 +42,7 @@ function WbsCell({ value, data }) {
 function NameCell({ value, data, collapsedRef, onToggleSection }) {
   if (data?._isSection && data?.wbs) {
     const isCollapsed = collapsedRef?.current?.has(data.wbs) ?? false;
+    const pct = data._sectionPct ?? null;
     return (
       <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
         <span
@@ -52,7 +53,12 @@ function NameCell({ value, data, collapsedRef, onToggleSection }) {
         >
           {isCollapsed ? '▶' : '▼'}
         </span>
-        {value}
+        <span style={{ flex: 1 }}>{value}</span>
+        {pct !== null && (
+          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color: pct === 100 ? '#34d399' : pct > 0 ? '#60a5fa' : 'var(--text-muted)', background: pct === 100 ? 'rgba(52,211,153,0.12)' : pct > 0 ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {pct}%
+          </span>
+        )}
       </span>
     );
   }
@@ -785,7 +791,10 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
       const children = allTasksRef.current.filter((c) => c.wbs?.startsWith(secWbs + '.'));
       const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
       const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
-      return [{ ...secRow, _isSection: true, cost: childCost, duration_days: childDuration }];
+      const childPct = children.length
+        ? Math.round(children.reduce((s, c) => s + (Number(c.percent_complete) || 0), 0) / children.length)
+        : null;
+      return [{ ...secRow, _isSection: true, cost: childCost, duration_days: childDuration, _sectionPct: childPct }];
     });
     gridRef.current?.api?.applyTransaction({ update: [...changedTasks, ...sectionUpdates] });
   }, []);
@@ -849,7 +858,10 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
         const children = tasks.filter((c) => c.wbs?.startsWith(t.wbs + '.'));
         const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
         const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
-        return { ...t, _isSection: true, cost: childCost, duration_days: childDuration };
+        const childPct = children.length
+          ? Math.round(children.reduce((s, c) => s + (Number(c.percent_complete) || 0), 0) / children.length)
+          : null;
+        return { ...t, _isSection: true, cost: childCost, duration_days: childDuration, _sectionPct: childPct };
       })
       .filter((t) => {
         if (!t.wbs || !t.wbs.includes('.')) return true; // always show sections + grand total
