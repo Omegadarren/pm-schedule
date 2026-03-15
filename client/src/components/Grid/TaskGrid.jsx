@@ -871,11 +871,15 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   }, [tasks, collapseVersion]);
 
   const grandTotalRow = useMemo(() => {
-    const total = tasks.filter((t) => !t.wbs || t.wbs.includes('.')).reduce((s, t) => s + (Number(t.cost) || 0), 0);
-    return [{ id: '_grand_total', name: 'PROJECT TOTAL', cost: total, _isSection: true }];
+    const leafTasks = tasks.filter((t) => !t.wbs || t.wbs.includes('.'));
+    const total = leafTasks.reduce((s, t) => s + (Number(t.cost) || 0), 0);
+    const avgPct = leafTasks.length
+      ? Math.round(leafTasks.reduce((s, t) => s + (Number(t.percent_complete) || 0), 0) / leafTasks.length)
+      : 0;
+    return [{ id: '_grand_total', name: 'PROJECT TOTAL', cost: total, percent_complete: avgPct, _isSection: true }];
   }, [tasks]);
 
-  const defaultColDef = useMemo(() => ({ sortable: true, filter: true, resizable: true, suppressMovable: false }), []);
+  const defaultColDef = useMemo(() => ({ sortable: true, filter: true, resizable: true, suppressMovable: false, suppressHeaderMenuButton: readOnly }), [readOnly]);
 
   // Right-click: empty area
   const handleWrapperContextMenu = useCallback((e) => {
@@ -1167,15 +1171,17 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
           )}
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Right-click rows to add tasks · Drag rows to reorder</span>
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{tasks.length} tasks</span>
-          <button
-            ref={colBtnRef}
-            className="btn btn-secondary btn-sm"
-            onClick={openColChooser}
-            title="Show/hide columns"
-            style={{ display: 'flex', alignItems: 'center', gap: 5 }}
-          >
-            ⊟ Columns
-          </button>
+          {!readOnly && (
+            <button
+              ref={colBtnRef}
+              className="btn btn-secondary btn-sm"
+              onClick={openColChooser}
+              title="Show/hide columns"
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              ⊟ Columns
+            </button>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={handleExportCSV} title="Export to CSV">↓ CSV</button>
         </div>
         <div className="ag-theme-alpine-dark" style={{ flex: 1, minHeight: 0 }} onContextMenu={handleWrapperContextMenu}>
