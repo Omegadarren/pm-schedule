@@ -1072,7 +1072,17 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input placeholder="Quick search..." value={quickFilter} onChange={(e) => setQuickFilter(e.target.value)}
             style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', outline: 'none', width: 200 }} />
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Right-click to add sections &amp; tasks · Drag rows to reorder</span>
+          {!readOnly && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleCtxAction('addSection', null)}
+              title="Add a new section to the bottom of the schedule"
+              style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
+            >
+              ＋ Section
+            </button>
+          )}
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Right-click rows to add tasks · Drag rows to reorder</span>
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{tasks.length} tasks</span>
           <button
             ref={colBtnRef}
