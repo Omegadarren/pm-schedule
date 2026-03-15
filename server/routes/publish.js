@@ -30,9 +30,20 @@ router.post('/', (req, res) => {
   }
 
   const scriptPath = path.join(__dirname, '../../scripts/publish.js');
-  const child = spawn('node', [scriptPath], {
-    cwd: path.join(__dirname, '../..'),
-  });
+
+  let child;
+  try {
+    child = spawn(process.execPath, [scriptPath], {
+      cwd: path.join(__dirname, '../..'),
+      env: { ...process.env },
+      shell: false,
+    });
+  } catch (spawnErr) {
+    send('log', `Failed to start process: ${spawnErr.message}\n`);
+    send('done', 'error');
+    res.end();
+    return;
+  }
 
   child.stdout.on('data', (chunk) => send('log', chunk.toString()));
   child.stderr.on('data', (chunk) => send('log', chunk.toString()));
@@ -48,7 +59,7 @@ router.post('/', (req, res) => {
     res.end();
   });
 
-  req.on('close', () => {
+  res.on('close', () => {
     if (!child.killed) child.kill();
   });
 });

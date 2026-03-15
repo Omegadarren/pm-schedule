@@ -1,12 +1,5 @@
 /**
  * publish.js
- * Full publish pipeline:
- *   1. Export SQLite → web-data.json
- *   2. Build Vite in static mode with the correct base path
- *   3. Push client/dist to the gh-pages branch on GitHub
- *
- * Run manually:  node scripts/publish.js
- * Or triggered by the server via POST /api/publish
  */
 
 const { execSync } = require('child_process');
