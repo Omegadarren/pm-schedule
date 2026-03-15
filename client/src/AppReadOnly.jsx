@@ -24,6 +24,36 @@ function ReadOnlyBanner({ exportedAt }) {
   );
 }
 
+// ── Read-only narrative display ────────────────────────────────────────
+function NarrativePanel({ narrative }) {
+  if (!narrative) return null;
+  return (
+    <div style={{
+      borderTop: '1px solid var(--border)',
+      background: 'var(--surface)',
+      padding: '14px 20px 18px',
+      flexShrink: 0,
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8, letterSpacing: 0.3 }}>
+        📝 Project Narrative
+      </div>
+      <div style={{
+        background: 'var(--surface2)',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        padding: '10px 14px',
+        fontSize: 13,
+        lineHeight: 1.7,
+        color: 'var(--text)',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      }}>
+        {narrative}
+      </div>
+    </div>
+  );
+}
+
 export default function AppReadOnly() {
   const { projects, allTasks, resources, loading, error, exportedAt, colState } = useStaticData();
 
@@ -100,6 +130,8 @@ export default function AppReadOnly() {
               </>
             )}
           </div>
+
+          <NarrativePanel narrative={selectedProject?.narrative} />
         </div>
       </div>
     </>

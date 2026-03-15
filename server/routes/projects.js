@@ -37,11 +37,11 @@ router.post('/', (req, res) => {
 // PUT update project
 router.put('/:id', (req, res) => {
   const db = getDb();
-  const { name, description, start_date, end_date, status, color, hourly_rate } = req.body;
+  const { name, description, start_date, end_date, status, color, hourly_rate, narrative } = req.body;
   db.prepare(`
-    UPDATE projects SET name=?, description=?, start_date=?, end_date=?, status=?, color=?, hourly_rate=?, updated_at=datetime('now')
+    UPDATE projects SET name=?, description=?, start_date=?, end_date=?, status=?, color=?, hourly_rate=?, narrative=?, updated_at=datetime('now')
     WHERE id=?
-  `).run(name, description, start_date, end_date, status, color, hourly_rate ?? 0, req.params.id);
+  `).run(name, description, start_date, end_date, status, color, hourly_rate ?? 0, narrative ?? '', req.params.id);
 
   const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
   res.json(project);
