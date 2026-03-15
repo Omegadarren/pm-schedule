@@ -332,23 +332,36 @@ html, body, #root {
 
 /* Mobile: ≤640px — sidebar hidden, compact header, project picker bar */
 @media (max-width: 640px) {
-  :root { --sidebar-width: 0px; --header-height: 44px; }
+  :root { --sidebar-width: 0px; --header-height: 36px; }
   .sidebar { display: none !important; }
-  .app-header { padding: 0 10px; height: 44px; }
-  .app-header h1 { font-size: 13px; }
-  .header-tabs { gap: 3px; }
-  .tab-btn { padding: 4px 9px; font-size: 11px; }
-  .view-container { padding: 6px; }
+  .app-header { padding: 0 8px; height: 36px; }
+  .app-header h1 { font-size: 11px; }
+  .header-tabs { gap: 2px; }
+  .tab-btn { padding: 2px 6px; font-size: 10px; }
+  .view-container { padding: 3px; }
   /* hide less important header buttons on tiny screens */
   .header-hide-mobile { display: none !important; }
+
+  /* AG Grid — compact rows */
+  .ag-theme-alpine-dark,
+  .ag-theme-alpine {
+    --ag-row-height: 22px !important;
+    --ag-header-height: 26px !important;
+    --ag-font-size: 10px !important;
+    --ag-cell-horizontal-padding: 4px !important;
+    --ag-list-item-height: 22px !important;
+  }
+  .ag-cell { line-height: 22px !important; font-size: 10px !important; }
+  .ag-header-cell-text { font-size: 10px !important; }
+  .ag-header-cell { padding: 0 4px !important; }
 }
 
 /* Mobile project picker — replaces sidebar as a horizontal chip row */
 .mobile-project-picker {
   display: none;
   overflow-x: auto;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 5px 8px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -362,9 +375,9 @@ html, body, #root {
 
 .mobile-project-chip {
   flex-shrink: 0;
-  padding: 5px 14px;
+  padding: 3px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--border);
