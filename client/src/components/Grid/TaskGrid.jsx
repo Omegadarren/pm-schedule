@@ -73,12 +73,22 @@ function PredecessorsCell(params) {
   );
 }
 // ── Stepper cell (shared by Duration and Lag/Lead) ────────────────────────
-function StepperCell({ value, onUpdate, formatDisplay, getColor }) {
+function StepperCell({ value, onUpdate, formatDisplay, getColor, readOnly = false }) {
   const [hovered, setHovered] = useState(false);
   const [typing, setTyping] = useState(false);
 
   const num = Number(value) || 0;
   const color = getColor ? getColor(num) : 'var(--text)';
+
+  if (readOnly) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+        <span style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontWeight: 500, color }}>
+          {formatDisplay(num)}
+        </span>
+      </div>
+    );
+  }
 
   if (typing) {
     return (
@@ -127,7 +137,7 @@ function StepperCell({ value, onUpdate, formatDisplay, getColor }) {
     </div>
   );
 }
-function DurationCell({ value, data, onDurationUpdate }) {
+function DurationCell({ value, data, onDurationUpdate, readOnly = false }) {
   if (data?._isSection) {
     const total = Number(value) || 0;
     return total > 0
@@ -139,10 +149,11 @@ function DurationCell({ value, data, onDurationUpdate }) {
       value={value ?? 1}
       onUpdate={(v) => onDurationUpdate(data.id, v)}
       formatDisplay={(v) => `${v}d`}
+      readOnly={readOnly}
     />
   );
 }
-function LagCell({ value, data, onLagUpdate }) {
+function LagCell({ value, data, onLagUpdate, readOnly = false }) {
   if (data?._isSection) return null;
   const deps = parseDeps(data?.predecessor_ids).filter((d) => d.id);
   if (!deps.length) return <span style={{ color: 'var(--text-muted)', opacity: 0.35 }}>—</span>;
@@ -152,11 +163,12 @@ function LagCell({ value, data, onLagUpdate }) {
       onUpdate={(v) => onLagUpdate(data.id, v)}
       formatDisplay={(v) => v > 0 ? `+${v}d` : v < 0 ? `${v}d` : '0d'}
       getColor={(v) => v > 0 ? '#fbbf24' : v < 0 ? '#34d399' : 'var(--text-muted)'}
+      readOnly={readOnly}
     />
   );
 }
-function LinkCell({ data, onLinkStart }) {
-  if (data?._isSection) return null;
+function LinkCell({ data, onLinkStart, readOnly = false }) {
+  if (data?._isSection || readOnly) return null;
   return (
     <div
       title="Drag to link this task to another"
@@ -507,18 +519,18 @@ function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpda
   const ed = (fn) => readOnly ? false : fn; // wrap editable functions
   return [
     { colId: 'drag', headerName: '', width: 36, rowDrag: !readOnly, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
-    { colId: 'link', headerName: '', width: 36, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellRenderer: LinkCell, cellRendererParams: { onLinkStart }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
+    { colId: 'link', headerName: '', width: readOnly ? 0 : 36, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, hide: readOnly, cellRenderer: LinkCell, cellRendererParams: { onLinkStart, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     { field: 'wbs', headerName: 'WBS', width: 70, sortable: true, cellRenderer: WbsCell, cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
     { field: 'start_date', headerName: 'Start', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'end_date', headerName: 'End', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'duration_days', headerName: 'Days', width: 78, editable: false, suppressClickEdit: true, sortable: true, cellRenderer: DurationCell, cellRendererParams: { onDurationUpdate }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
+    { field: 'duration_days', headerName: 'Days', width: 78, editable: false, suppressClickEdit: true, sortable: true, cellRenderer: DurationCell, cellRendererParams: { onDurationUpdate, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     {
       colId: 'lag', headerName: 'Lag/Lead', width: 92, sortable: false, filter: false,
       editable: false, suppressClickEdit: true,
       valueGetter: (p) => { if (p.data?._isSection) return null; const deps = parseDeps(p.data?.predecessor_ids).filter((d) => d.id); return deps.length ? deps[0].lag : null; },
       cellRenderer: LagCell,
-      cellRendererParams: { onLagUpdate },
+      cellRendererParams: { onLagUpdate, readOnly },
       cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
     },
     { field: 'percent_complete', headerName: '% Done', width: 130, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: ProgressCell, cellStyle: { display: 'flex', alignItems: 'center' } },
