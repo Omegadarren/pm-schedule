@@ -25,7 +25,7 @@ function ReadOnlyBanner({ exportedAt }) {
 }
 
 export default function AppReadOnly() {
-  const { projects, allTasks, resources, loading, error, exportedAt } = useStaticData();
+  const { projects, allTasks, resources, loading, error, exportedAt, colState } = useStaticData();
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [activeTab, setActiveTab]                 = useState('grid');
@@ -87,6 +87,7 @@ export default function AppReadOnly() {
                     projectId={selectedProjectId}
                     hourlyRate={selectedProject?.hourly_rate ?? 0}
                     readOnly
+                    colState={colState}
                     /* no onUpdate / onAdd / onDelete / onRefetch in read-only mode */
                   />
                 )}

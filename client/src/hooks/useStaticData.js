@@ -11,6 +11,7 @@ export function useStaticData() {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(null);
   const [exportedAt, setExportedAt] = useState(null);
+  const [colState,   setColState]   = useState(null);
 
   useEffect(() => {
     fetch('./web-data.json')
@@ -23,6 +24,7 @@ export function useStaticData() {
         setAllTasks(d.tasks     ?? {});
         setResources(d.resources ?? {});
         setExportedAt(d.exportedAt ?? null);
+        setColState(d.colState  ?? null);
         setLoading(false);
       })
       .catch((e) => {
@@ -31,5 +33,5 @@ export function useStaticData() {
       });
   }, []);
 
-  return { projects, allTasks, resources, loading, error, exportedAt };
+  return { projects, allTasks, resources, loading, error, exportedAt, colState };
 }

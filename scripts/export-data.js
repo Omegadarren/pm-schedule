@@ -8,8 +8,9 @@ const Database = require(require.resolve('better-sqlite3', { paths: [require('pa
 const path     = require('path');
 const fs       = require('fs');
 
-const DB_PATH  = path.join(__dirname, '../server/data/pmschedule.db');
-const OUT_PATH = path.join(__dirname, '../client/public/web-data.json');
+const DB_PATH      = path.join(__dirname, '../server/data/pmschedule.db');
+const OUT_PATH     = path.join(__dirname, '../client/public/web-data.json');
+const COL_STATE_TMP = path.join(__dirname, './col-state-tmp.json');
 
 if (!fs.existsSync(DB_PATH)) {
   console.error('❌  Database not found at', DB_PATH);
@@ -34,11 +35,20 @@ for (const project of projects) {
 
 db.close();
 
+// Include column state if one was saved from the browser at publish time.
+let colState = null;
+try {
+  if (fs.existsSync(COL_STATE_TMP)) {
+    colState = JSON.parse(fs.readFileSync(COL_STATE_TMP, 'utf8'));
+  }
+} catch (_) {}
+
 const payload = {
   exportedAt: new Date().toISOString(),
   projects,
   tasks,
   resources,
+  colState,
 };
 
 // Make sure public dir exists

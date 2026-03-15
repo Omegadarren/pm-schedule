@@ -17,7 +17,15 @@ function PublishModal({ onClose }) {
 
     (async () => {
       try {
-        const res = await fetch('/api/publish', { method: 'POST' });
+        const colState = (() => {
+          try { const s = localStorage.getItem('pm_col_state'); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+        })();
+
+        const res = await fetch('/api/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ colState }),
+        });
         const reader = res.body.getReader();
         const dec = new TextDecoder();
         let buf = '';

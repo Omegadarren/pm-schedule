@@ -606,7 +606,7 @@ function ColumnChooserPanel({ pos, gridApi, onToggle, onClose }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () => Promise.resolve(), onAdd = () => {}, onDelete = () => {}, onRefetch = () => {}, readOnly = false }) {
+export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () => Promise.resolve(), onAdd = () => {}, onDelete = () => {}, onRefetch = () => {}, readOnly = false, colState = null }) {
   const gridRef = useRef(null);
   const [quickFilter, setQuickFilter] = useState('');
   const [depEditorTask, setDepEditorTask] = useState(null);
@@ -1031,13 +1031,17 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   }, []);
 
   const onGridReady = useCallback(() => {
-    const saved = localStorage.getItem(COL_STATE_KEY);
-    if (saved) {
+    // In read-only (web) mode, use the snapshot state passed as a prop.
+    // In live mode, restore from localStorage.
+    const stateToApply = readOnly
+      ? colState
+      : (() => { try { const s = localStorage.getItem(COL_STATE_KEY); return s ? JSON.parse(s) : null; } catch (_) { return null; } })();
+    if (stateToApply) {
       try {
-        gridRef.current?.api?.applyColumnState({ state: JSON.parse(saved), applyOrder: true });
+        gridRef.current?.api?.applyColumnState({ state: stateToApply, applyOrder: true });
       } catch (_) {}
     }
-  }, []);
+  }, [readOnly, colState]);
 
   const toggleCol = useCallback((colId, currentlyVisible) => {
     gridRef.current?.api?.applyColumnState({ state: [{ colId, hide: currentlyVisible }] });
