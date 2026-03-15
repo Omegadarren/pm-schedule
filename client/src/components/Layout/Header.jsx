@@ -144,6 +144,14 @@ function PublishModal({ onClose }) {
 export default function Header({ project, tasks, activeTab, onTabChange, connected, readOnly = false }) {
   const [printing, setPrinting]         = useState(false);
   const [showPublish, setShowPublish]   = useState(false);
+  const [webUrl, setWebUrl]             = useState(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((d) => { if (d.webUrl) setWebUrl(d.webUrl); })
+      .catch(() => {});
+  }, []);
 
   const handlePrint = async () => {
     if (!project || !tasks) return;
@@ -204,6 +212,27 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
             >
               {printing ? '⏳ Generating…' : '⬇ Export PDF'}
             </button>
+          )}
+
+          {/* Go to web page button */}
+          {webUrl && (
+            <a
+              href={webUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(99,102,241,0.12)',
+                border: '1px solid rgba(99,102,241,0.35)',
+                borderRadius: 6, color: '#a5b4fc', cursor: 'pointer',
+                padding: '5px 12px', fontSize: 12, fontWeight: 500,
+                textDecoration: 'none', transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.22)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; }}
+            >
+              ↗ Web Page
+            </a>
           )}
 
           {/* Publish button — only in the live (non-read-only) app */}

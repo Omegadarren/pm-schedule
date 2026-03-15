@@ -34,6 +34,17 @@ app.use('/api/publish',  publishRouter);
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
+// Web config (exposes GitHub Pages URL to the client)
+app.get('/api/config', (req, res) => {
+  try {
+    const fs = require('fs');
+    const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web-config.json'), 'utf8'));
+    res.json({ webUrl: `https://${cfg.githubUser}.github.io/${cfg.repoName}` });
+  } catch (_) {
+    res.json({ webUrl: null });
+  }
+});
+
 // ─── Socket.IO realtime sync ────────────────────────────────────────────────
 io.on('connection', (socket) => {
   console.log(`[WS] Client connected: ${socket.id}`);
