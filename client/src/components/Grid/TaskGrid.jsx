@@ -1171,6 +1171,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input placeholder="Quick search..." value={quickFilter} onChange={(e) => setQuickFilter(e.target.value)}
+            className="grid-search-input"
             style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', outline: 'none', width: 200 }} />
           {!readOnly && (
             <button
@@ -1182,8 +1183,8 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
               ＋ Section
             </button>
           )}
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Right-click rows to add tasks · Drag rows to reorder</span>
-          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{tasks.length} tasks</span>
+          <span className="grid-toolbar-hint" style={{ fontSize: 11, color: 'var(--text-muted)' }}>Right-click rows to add tasks · Drag rows to reorder</span>
+          <span className="header-hide-mobile" style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{tasks.length} tasks</span>
           {!readOnly && (
             <button
               ref={colBtnRef}
@@ -1195,7 +1196,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
               ⊟ Columns
             </button>
           )}
-          <button className="btn btn-secondary btn-sm" onClick={handleExportCSV} title="Export to CSV">↓ CSV</button>
+          <button className="btn btn-secondary btn-sm header-hide-mobile" onClick={handleExportCSV} title="Export to CSV">↓ CSV</button>
         </div>
         <div className="ag-theme-alpine-dark" style={{ flex: 1, minHeight: 0 }} onContextMenu={handleWrapperContextMenu}>
           <AgGridReact

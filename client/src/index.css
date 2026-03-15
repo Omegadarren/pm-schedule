@@ -332,28 +332,57 @@ html, body, #root {
 
 /* Mobile: ≤640px — sidebar hidden, compact header, project picker bar */
 @media (max-width: 640px) {
-  :root { --sidebar-width: 0px; --header-height: 36px; }
+  :root { --sidebar-width: 0px; --header-height: 32px; }
   .sidebar { display: none !important; }
-  .app-header { padding: 0 8px; height: 36px; }
-  .app-header h1 { font-size: 11px; }
-  .header-tabs { gap: 2px; }
-  .tab-btn { padding: 2px 6px; font-size: 10px; }
-  .view-container { padding: 3px; }
-  /* hide less important header buttons on tiny screens */
+  .app-header { padding: 0 6px; height: 32px; }
+  .app-header h1 { font-size: 10px; }
+  .header-tabs { gap: 1px; }
+  .tab-btn { padding: 2px 5px; font-size: 9px; }
+  .view-container { padding: 2px; }
   .header-hide-mobile { display: none !important; }
 
-  /* AG Grid — compact rows */
+  /* AG Grid — ultra-compact rows */
   .ag-theme-alpine-dark,
   .ag-theme-alpine {
-    --ag-row-height: 22px !important;
-    --ag-header-height: 26px !important;
-    --ag-font-size: 10px !important;
-    --ag-cell-horizontal-padding: 4px !important;
-    --ag-list-item-height: 22px !important;
+    --ag-row-height: 18px !important;
+    --ag-header-height: 22px !important;
+    --ag-font-size: 9px !important;
+    --ag-cell-horizontal-padding: 3px !important;
+    --ag-list-item-height: 18px !important;
   }
-  .ag-cell { line-height: 22px !important; font-size: 10px !important; }
-  .ag-header-cell-text { font-size: 10px !important; }
-  .ag-header-cell { padding: 0 4px !important; }
+  .ag-cell { line-height: 18px !important; font-size: 9px !important; }
+  .ag-header-cell-text { font-size: 9px !important; }
+  .ag-header-cell { padding: 0 3px !important; }
+
+  /* Hide non-essential columns on phone — keep Name, % Done, Cost, Status */
+  .ag-header-cell[col-id="drag"],
+  .ag-cell[col-id="drag"],
+  .ag-header-cell[col-id="link"],
+  .ag-cell[col-id="link"],
+  .ag-header-cell[col-id="wbs"],
+  .ag-cell[col-id="wbs"],
+  .ag-header-cell[col-id="start_date"],
+  .ag-cell[col-id="start_date"],
+  .ag-header-cell[col-id="end_date"],
+  .ag-cell[col-id="end_date"],
+  .ag-header-cell[col-id="duration_days"],
+  .ag-cell[col-id="duration_days"],
+  .ag-header-cell[col-id="lag"],
+  .ag-cell[col-id="lag"],
+  .ag-header-cell[col-id="priority"],
+  .ag-cell[col-id="priority"],
+  .ag-header-cell[col-id="assigned_to"],
+  .ag-cell[col-id="assigned_to"],
+  .ag-header-cell[col-id="predecessor_ids"],
+  .ag-cell[col-id="predecessor_ids"],
+  .ag-header-cell[col-id="notes"],
+  .ag-cell[col-id="notes"] {
+    display: none !important;
+  }
+
+  /* Shrink toolbar */
+  .grid-toolbar-hint { display: none !important; }
+  .grid-search-input { width: 110px !important; font-size: 9px !important; padding: 3px 6px !important; }
 }
 
 /* Mobile project picker — replaces sidebar as a horizontal chip row */
