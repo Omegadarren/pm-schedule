@@ -19,6 +19,19 @@ function PriorityCell({ value }) {
   return <span className={`badge badge-${value}`}>{value}</span>;
 }
 function ProgressCell({ value, data }) {
+  // Grand total pinned row — show avg % with a full-width bar
+  if (data?.id === '_grand_total') {
+    const pct = Number(value) || 0;
+    const color = pct === 100 ? '#34d399' : pct > 0 ? '#60a5fa' : 'var(--text-muted)';
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+        <div className="progress-bar" style={{ flex: 1 }}>
+          <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
+      </div>
+    );
+  }
   if (data?._isSection) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
