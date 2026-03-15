@@ -45,22 +45,27 @@ router.post('/', (req, res) => {
     return;
   }
 
+  let doneSent = false;
+  const finish = (outcome) => {
+    if (doneSent) return;
+    doneSent = true;
+    send('done', outcome);
+    res.end();
+  };
+
   child.stdout.on('data', (chunk) => send('log', chunk.toString()));
   child.stderr.on('data', (chunk) => send('log', chunk.toString()));
 
-  child.on('close', (code) => {
-    send('done', code === 0 ? 'success' : 'error');
-    res.end();
-  });
+  child.on('close', (code) => finish(code === 0 ? 'success' : 'error'));
 
   child.on('error', (err) => {
     send('log', `Process error: ${err.message}\n`);
-    send('done', 'error');
-    res.end();
+    finish('error');
   });
 
+  // Only kill the child if it is still running (exitCode is null while running)
   res.on('close', () => {
-    if (!child.killed) child.kill();
+    if (child.exitCode === null && !child.killed) child.kill();
   });
 });
 

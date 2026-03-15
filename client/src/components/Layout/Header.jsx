@@ -53,6 +53,18 @@ function PublishModal({ onClose }) {
             } catch (_) {}
           }
         }
+
+        // Flush any data that arrived alongside the stream-end signal
+        if (buf.trim()) {
+          for (const part of buf.split('\n\n')) {
+            const line = part.trim();
+            if (!line.startsWith('data:')) continue;
+            try {
+              const { type, data } = JSON.parse(line.slice(5).trim());
+              if (!cancelled && type === 'done') setStatus(data);
+            } catch (_) {}
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setLogs((prev) => [...prev, `Network error: ${err.message}\n`]);
