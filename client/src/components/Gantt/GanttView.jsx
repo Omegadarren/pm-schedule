@@ -123,7 +123,7 @@ export default function GanttView({ tasks, onUpdate }) {
           Filled = % complete
         </span>
         <span>
-          <span style={{ display: 'inline-block', width: 2, height: 12, background: '#60a5fa', marginRight: 4, verticalAlign: 'middle', display: 'inline-block' }} />
+          <span style={{ display: 'inline-block', width: 2, height: 12, background: '#60a5fa', marginRight: 4, verticalAlign: 'middle' }} />
           Today line
         </span>
       </div>
