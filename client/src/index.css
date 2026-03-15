@@ -317,5 +317,5 @@ html, body, #root {
 .task-complete-row { background: rgba(0,0,0,0.08) !important; }
 
 /* ── Critical task rows ────────────────────────────────────────────────── */
-.task-critical-row { background: rgba(239,68,68,0.07) !important; }
-.task-critical-row .ag-cell { color: #fca5a5 !important; font-weight: 600 !important; }
+.task-critical-row { background: rgba(239,68,68,0.18) !important; border-left: 3px solid #ef4444 !important; }
+.task-critical-row .ag-cell { color: #ff6b6b !important; font-weight: 700 !important; }
