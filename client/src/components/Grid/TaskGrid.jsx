@@ -266,6 +266,9 @@ function ContextMenu({ menu, onClose, onAction }) {
       { label: '✔  Mark Complete', action: 'markComplete' },
       { label: '↺  Mark Incomplete', action: 'markIncomplete' },
       { sep: true },
+      { label: '🔴  Mark Critical', action: 'markCritical', critical: true },
+      { label: '○  Unmark Critical', action: 'unmarkCritical' },
+      { sep: true },
       { label: '✕  Delete Task', action: 'deleteTask', danger: true },
     ],
   };
@@ -277,8 +280,8 @@ function ContextMenu({ menu, onClose, onAction }) {
         : <div key={i}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => { onAction(item.action, row); onClose(); }}
-            style={{ padding: '8px 16px', cursor: 'pointer', color: item.danger ? 'var(--danger)' : 'var(--text)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = item.danger ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.07)'; }}
+            style={{ padding: '8px 16px', cursor: 'pointer', color: item.danger ? 'var(--danger)' : item.critical ? '#f87171' : 'var(--text)', fontWeight: item.critical ? 600 : 400 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = item.danger ? 'rgba(239,68,68,0.12)' : item.critical ? 'rgba(248,113,113,0.1)' : 'rgba(255,255,255,0.07)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >{item.label}</div>
       )}
@@ -915,6 +918,18 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
       gridRef.current?.api?.applyTransaction({ update: [updated] });
       await onUpdate(row.id, updated);
     }
+    if (action === 'markCritical' && row) {
+      const updated = { ...row, priority: 'critical' };
+      allTasksRef.current = allTasksRef.current.map((x) => (x.id === row.id ? updated : x));
+      gridRef.current?.api?.applyTransaction({ update: [updated] });
+      await onUpdate(row.id, updated);
+    }
+    if (action === 'unmarkCritical' && row) {
+      const updated = { ...row, priority: row.priority === 'critical' ? 'medium' : row.priority };
+      allTasksRef.current = allTasksRef.current.map((x) => (x.id === row.id ? updated : x));
+      gridRef.current?.api?.applyTransaction({ update: [updated] });
+      await onUpdate(row.id, updated);
+    }
     if (action === 'deleteSection' && row) {
       for (const c of all.filter((t) => t.wbs?.startsWith(row.wbs + '.'))) await onDelete(c.id);
       await onDelete(row.id);
@@ -1170,6 +1185,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
             rowClassRules={{
               'section-header-row': (p) => !!p.data?._isSection,
               'task-complete-row':  (p) => !p.data?._isSection && p.data?.status === 'complete',
+              'task-critical-row':  (p) => !p.data?._isSection && p.data?.priority === 'critical' && p.data?.status !== 'complete',
             }}
             rowDragManaged
             suppressMoveWhenRowDragging
