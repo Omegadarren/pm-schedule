@@ -23,11 +23,13 @@ app.set('io', io);
 
 // Routes
 const projectsRouter = require('./routes/projects');
-const tasksRouter = require('./routes/tasks');
+const tasksRouter    = require('./routes/tasks');
 const resourcesRouter = require('./routes/resources');
+const publishRouter  = require('./routes/publish');
 app.use('/api/projects', projectsRouter);
-app.use('/api/tasks', tasksRouter);
+app.use('/api/tasks',    tasksRouter);
 app.use('/api/resources', resourcesRouter);
+app.use('/api/publish',  publishRouter);
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));

@@ -202,7 +202,7 @@ function DeleteConfirmModal({ project, onConfirm, onClose }) {
   );
 }
 
-export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject }) {
+export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject, readOnly = false }) {
   const [showModal, setShowModal] = useState(false);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, projectId }
   const [renamingId, setRenamingId] = useState(null);
@@ -256,7 +256,7 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
             key={p.id}
             className={`sidebar-item ${selectedProjectId === p.id ? 'active' : ''}`}
             onClick={() => { if (renamingId !== p.id) onSelectProject(p.id); }}
-            onContextMenu={(e) => handleContextMenu(e, p.id)}
+            onContextMenu={readOnly ? undefined : (e) => handleContextMenu(e, p.id)}
           >
             <span>{PROJECT_ICONS[p.status] || '📁'}</span>
             {renamingId === p.id ? (
@@ -288,14 +288,16 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
           </div>
         ))}
 
-        <button className="sidebar-new-project" onClick={() => setShowModal(true)}>
-          + New Project
-        </button>
+        {!readOnly && (
+          <button className="sidebar-new-project" onClick={() => setShowModal(true)}>
+            + New Project
+          </button>
+        )}
 
         <div style={{ flex: 1 }} />
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
-          PM Schedule v1.0
+          {readOnly ? '👁 View Only' : 'PM Schedule v1.0'}
         </div>
       </aside>
 

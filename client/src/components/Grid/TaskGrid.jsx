@@ -52,15 +52,18 @@ function CostCell({ value, data }) {
   return <span style={{ fontWeight: data?._isSection ? 700 : 400, color: data?._isSection ? '#86efac' : 'inherit' }}>{USD.format(n || 0)}</span>;
 }
 function PredecessorsCell(params) {
-  const { value, data, allTasksRef, onOpenEditor } = params;
+  const { value, data, allTasksRef, onOpenEditor, readOnly = false } = params;
   if (data?._isSection) return null;
   const allTasks = allTasksRef?.current || [];
   const validDeps = parseDeps(value).filter((d) => d.id);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', width: '100%', cursor: 'pointer' }}
-      onClick={(e) => { e.stopPropagation(); onOpenEditor(data); }} title="Click to edit dependencies">
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', width: '100%', cursor: readOnly ? 'default' : 'pointer' }}
+      onClick={(e) => { if (readOnly) return; e.stopPropagation(); onOpenEditor(data); }}
+      title={readOnly ? '' : 'Click to edit dependencies'}
+    >
       {validDeps.length === 0
-        ? <span style={{ color: 'var(--text-muted)', fontSize: 11, opacity: 0.5 }}>+ add link</span>
+        ? !readOnly && <span style={{ color: 'var(--text-muted)', fontSize: 11, opacity: 0.5 }}>+ add link</span>
         : validDeps.map((dep, i) => (
           <span key={i} style={{ background: 'rgba(59,130,246,0.18)', color: '#60a5fa', borderRadius: 4, padding: '2px 7px', fontSize: 11, whiteSpace: 'nowrap', border: '1px solid rgba(59,130,246,0.3)' }}>
             {depLabel(dep, allTasks)}
@@ -252,7 +255,7 @@ function ContextMenu({ menu, onClose, onAction }) {
 const STATUS_OPTIONS = ['not_started', 'in_progress', 'complete', 'on_hold'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'critical'];
 
-function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResource }) {
+function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResource, readOnly = false }) {
   const [open, setOpen] = useState(false);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
   const [addingNew, setAddingNew] = useState(false);
@@ -265,6 +268,7 @@ function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResou
   const selected = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : [];
 
   const openMenu = (e) => {
+    if (readOnly) return;
     e.stopPropagation();
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) setDropPos({ top: rect.bottom + 2, left: rect.left });
@@ -499,14 +503,15 @@ const CostEditor = forwardRef(function CostEditor({ value, hourlyRate, stopEditi
   );
 });
 
-function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate) {
+function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false) {
+  const ed = (fn) => readOnly ? false : fn; // wrap editable functions
   return [
-    { colId: 'drag', headerName: '', width: 36, rowDrag: true, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
+    { colId: 'drag', headerName: '', width: 36, rowDrag: !readOnly, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
     { colId: 'link', headerName: '', width: 36, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellRenderer: LinkCell, cellRendererParams: { onLinkStart }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     { field: 'wbs', headerName: 'WBS', width: 70, sortable: true, cellRenderer: WbsCell, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: true, cellRenderer: NameCell, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
-    { field: 'start_date', headerName: 'Start', width: 120, editable: (p) => !p.data?._isSection, cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'end_date', headerName: 'End', width: 120, editable: (p) => !p.data?._isSection, cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
+    { field: 'start_date', headerName: 'Start', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'end_date', headerName: 'End', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'duration_days', headerName: 'Days', width: 78, editable: false, suppressClickEdit: true, sortable: true, cellRenderer: DurationCell, cellRendererParams: { onDurationUpdate }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     {
       colId: 'lag', headerName: 'Lag/Lead', width: 92, sortable: false, filter: false,
@@ -516,13 +521,13 @@ function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpda
       cellRendererParams: { onLagUpdate },
       cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
     },
-    { field: 'percent_complete', headerName: '% Done', width: 130, editable: (p) => !p.data?._isSection, type: 'numericColumn', cellRenderer: ProgressCell, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'status', headerName: 'Status', width: 130, editable: (p) => !p.data?._isSection, cellRenderer: (p) => p.data?._isSection ? null : <StatusCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: STATUS_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'priority', headerName: 'Priority', width: 100, editable: (p) => !p.data?._isSection, cellRenderer: (p) => p.data?._isSection ? null : <PriorityCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: PRIORITY_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'cost', headerName: 'Cost (USD)', width: 125, editable: (p) => !p.data?._isSection, type: 'numericColumn', cellRenderer: CostCell, cellEditor: CostEditor, cellEditorParams: { hourlyRate }, cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
-    { field: 'assigned_to', headerName: 'Assigned To', width: 155, editable: false, suppressClickEdit: true, cellRenderer: AssignedToCell, cellRendererParams: { resources, onAssignedToUpdate, onAddResource }, cellStyle: { display: 'flex', alignItems: 'center', padding: '0 4px' } },
-    { field: 'predecessor_ids', headerName: 'Predecessors', width: 175, editable: false, suppressClickEdit: true, cellRenderer: PredecessorsCell, cellRendererParams: { allTasksRef, onOpenEditor }, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'notes', headerName: 'Notes', flex: 1, minWidth: 100, editable: (p) => !p.data?._isSection, cellStyle: { display: 'flex', alignItems: 'center', color: 'var(--text-muted)' } },
+    { field: 'percent_complete', headerName: '% Done', width: 130, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: ProgressCell, cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'status', headerName: 'Status', width: 130, editable: ed((p) => !p.data?._isSection), cellRenderer: (p) => p.data?._isSection ? null : <StatusCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: STATUS_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'priority', headerName: 'Priority', width: 100, editable: ed((p) => !p.data?._isSection), cellRenderer: (p) => p.data?._isSection ? null : <PriorityCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: PRIORITY_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'cost', headerName: 'Cost (USD)', width: 125, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: CostCell, ...(readOnly ? {} : { cellEditor: CostEditor, cellEditorParams: { hourlyRate } }), cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
+    { field: 'assigned_to', headerName: 'Assigned To', width: 155, editable: false, suppressClickEdit: true, cellRenderer: AssignedToCell, cellRendererParams: { resources, onAssignedToUpdate, onAddResource, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', padding: '0 4px' } },
+    { field: 'predecessor_ids', headerName: 'Predecessors', width: 175, editable: false, suppressClickEdit: true, cellRenderer: PredecessorsCell, cellRendererParams: { allTasksRef, onOpenEditor, readOnly }, cellStyle: { display: 'flex', alignItems: 'center' } },
+    { field: 'notes', headerName: 'Notes', flex: 1, minWidth: 100, editable: ed((p) => !p.data?._isSection), cellStyle: { display: 'flex', alignItems: 'center', color: 'var(--text-muted)' } },
   ];
 }
 
@@ -601,7 +606,7 @@ function ColumnChooserPanel({ pos, gridApi, onToggle, onClose }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate, onAdd, onDelete, onRefetch }) {
+export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () => Promise.resolve(), onAdd = () => {}, onDelete = () => {}, onRefetch = () => {}, readOnly = false }) {
   const gridRef = useRef(null);
   const [quickFilter, setQuickFilter] = useState('');
   const [depEditorTask, setDepEditorTask] = useState(null);
@@ -782,7 +787,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate, onAdd
     await onUpdate(taskId, updated);
   }, [onUpdate]);
 
-  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate]);
+  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly]);
 
   // Overlay section cost + duration = sum of children; mark section rows
   const rowData = useMemo(() => tasks.map((t) => {
