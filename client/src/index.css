@@ -319,3 +319,62 @@ html, body, #root {
 /* ── Critical task rows ────────────────────────────────────────────────── */
 .task-critical-row { background: rgba(239,68,68,0.18) !important; border-left: 3px solid #ef4444 !important; }
 .task-critical-row .ag-cell { color: #ff6b6b !important; font-weight: 700 !important; }
+
+/* ── Responsive layout ─────────────────────────────────────────────────────── */
+
+/* Tablet: 641–1024px — slightly narrower sidebar, tighter padding */
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root { --sidebar-width: 170px; }
+  .view-container { padding: 10px; }
+  .app-header { padding: 0 12px; }
+  .app-header h1 { font-size: 15px; }
+}
+
+/* Mobile: ≤640px — sidebar hidden, compact header, project picker bar */
+@media (max-width: 640px) {
+  :root { --sidebar-width: 0px; --header-height: 44px; }
+  .sidebar { display: none !important; }
+  .app-header { padding: 0 10px; height: 44px; }
+  .app-header h1 { font-size: 13px; }
+  .header-tabs { gap: 3px; }
+  .tab-btn { padding: 4px 9px; font-size: 11px; }
+  .view-container { padding: 6px; }
+  /* hide less important header buttons on tiny screens */
+  .header-hide-mobile { display: none !important; }
+}
+
+/* Mobile project picker — replaces sidebar as a horizontal chip row */
+.mobile-project-picker {
+  display: none;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.mobile-project-picker::-webkit-scrollbar { display: none; }
+
+@media (max-width: 640px) {
+  .mobile-project-picker { display: flex; }
+}
+
+.mobile-project-chip {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.mobile-project-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

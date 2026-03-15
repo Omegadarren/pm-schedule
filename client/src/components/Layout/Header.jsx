@@ -199,6 +199,7 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
             <button
               onClick={handlePrint}
               disabled={printing}
+              className="header-hide-mobile"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: printing ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.15)',

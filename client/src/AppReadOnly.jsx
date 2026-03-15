@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar   from './components/Layout/Sidebar.jsx';
 import Header    from './components/Layout/Header.jsx';
 import TaskGrid  from './components/Grid/TaskGrid.jsx';
 import GanttView from './components/Gantt/GanttView.jsx';
 import { useStaticData } from './hooks/useStaticData.js';
+
+// ── Device detection ─────────────────────────────────────────────────────────
+function useDevice() {
+  const getDevice = () => {
+    const w = window.innerWidth;
+    if (w <= 640)  return 'mobile';
+    if (w <= 1024) return 'tablet';
+    return 'desktop';
+  };
+  const [device, setDevice] = useState(getDevice);
+  useEffect(() => {
+    const handler = () => setDevice(getDevice());
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return device;
+}
 
 // ── Read-only banner shown at the top of the page ────────────────────────────
 function ReadOnlyBanner({ exportedAt }) {
@@ -54,8 +71,27 @@ function NarrativePanel({ narrative }) {
   );
 }
 
+// ── Mobile project picker bar ───────────────────────────────────────────────
+function MobileProjectPicker({ projects, selectedProjectId, onSelect }) {
+  if (!projects.length) return null;
+  return (
+    <div className="mobile-project-picker">
+      {projects.map((p) => (
+        <button
+          key={p.id}
+          className={`mobile-project-chip${p.id === selectedProjectId ? ' active' : ''}`}
+          onClick={() => onSelect(p.id)}
+        >
+          {p.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AppReadOnly() {
   const { projects, allTasks, resources, loading, error, exportedAt, colState } = useStaticData();
+  const device = useDevice();
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [activeTab, setActiveTab]                 = useState('grid');
@@ -76,12 +112,12 @@ export default function AppReadOnly() {
 
       {/* Push content down by banner height */}
       <div className="app-layout" style={{ paddingTop: 28 }}>
+        {/* Sidebar — hidden on mobile via CSS, shown on tablet/desktop */}
         <Sidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelectProject={setSelectedProjectId}
           readOnly
-          /* intentionally omit create/rename/update/delete handlers */
         />
 
         <div className="main-content">
@@ -93,6 +129,15 @@ export default function AppReadOnly() {
             connected={false}
             readOnly
           />
+
+          {/* Mobile-only: project chips instead of sidebar */}
+          {device === 'mobile' && (
+            <MobileProjectPicker
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+            />
+          )}
 
           <div className="view-container">
             {loading ? (
