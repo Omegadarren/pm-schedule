@@ -531,13 +531,13 @@ const CostEditor = forwardRef(function CostEditor({ value, hourlyRate, stopEditi
   );
 });
 
-function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false, collapsedRef = null, onToggleSection = null) {
+function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false, collapsedRef = null, onToggleSection = null, collapseVersion = 0) {
   const ed = (fn) => readOnly ? false : fn; // wrap editable functions
   return [
     { colId: 'drag', headerName: '', width: 36, rowDrag: !readOnly, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
     { colId: 'link', headerName: '', width: readOnly ? 0 : 36, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, hide: readOnly, cellRenderer: LinkCell, cellRendererParams: { onLinkStart, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
     { field: 'wbs', headerName: 'WBS', width: 70, sortable: true, cellRenderer: WbsCell, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellRendererParams: { collapsedRef, onToggleSection }, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
+    { field: 'name', headerName: 'Task / Section', flex: 2, minWidth: 200, editable: ed(() => true), cellRenderer: NameCell, cellRendererParams: { collapsedRef, onToggleSection, collapseVersion }, cellStyle: { display: 'flex', alignItems: 'center', gap: 4 } },
     { field: 'start_date', headerName: 'Start', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'end_date', headerName: 'End', width: 120, editable: ed((p) => !p.data?._isSection), cellRenderer: DateCell, cellEditor: 'agDateStringCellEditor', cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'duration_days', headerName: 'Days', width: 78, editable: false, suppressClickEdit: true, sortable: true, cellRenderer: DurationCell, cellRendererParams: { onDurationUpdate, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 } },
@@ -651,8 +651,6 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     if (next.has(wbs)) next.delete(wbs); else next.add(wbs);
     collapsedRef.current = next;
     setCollapseVersion((n) => n + 1);
-    // Refresh name cells so chevron direction updates immediately
-    setTimeout(() => gridRef.current?.api?.refreshCells({ force: true, columns: ['name'] }), 0);
   }, []);
 
   const allTasksRef = useRef(tasks);
@@ -827,7 +825,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     await onUpdate(taskId, updated);
   }, [onUpdate]);
 
-  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, collapsedRef, toggleSection), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, toggleSection]);
+  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, collapsedRef, toggleSection, collapseVersion), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, toggleSection, collapseVersion]);
 
   // Overlay section cost + duration = sum of children; mark section rows
   // Filter out children of collapsed sections
