@@ -58,11 +58,20 @@ try {
   console.log('\n🚀  Step 3/3 — Pushing to GitHub Pages...');
 
   const distDir = path.join(clientDir, 'dist');
+  const tempGit = path.join(distDir, '.git');
   const git = (cmd) => run(`git ${cmd}`, { cwd: distDir });
 
-  // Remove any previous temp repo so we start clean
-  const tempGit = path.join(distDir, '.git');
-  if (fs.existsSync(tempGit)) fs.rmSync(tempGit, { recursive: true, force: true });
+  // Remove any previous temp repo so we start clean.
+  // Use a shell rmdir as fallback because git may have left locked handles on Windows.
+  if (fs.existsSync(tempGit)) {
+    try {
+      fs.rmSync(tempGit, { recursive: true, force: true });
+    } catch (_) {
+      try {
+        execSync(`rmdir /s /q "${tempGit}"`, { stdio: 'pipe', shell: true });
+      } catch (_2) { /* ignore — git init will overwrite */ }
+    }
+  }
 
   git('init -b gh-pages');
   git('config user.email "deploy@pm-schedule"');
