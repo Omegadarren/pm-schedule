@@ -179,7 +179,7 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
             </div>
 
             <div className="header-tabs">
-              {TABS.map((tab) => (
+              {TABS.filter((tab) => !(readOnly && tab.id === 'gantt')).map((tab) => (
                 <button
                   key={tab.id}
                   className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
