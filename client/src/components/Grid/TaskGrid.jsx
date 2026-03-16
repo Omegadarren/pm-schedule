@@ -662,6 +662,9 @@ function ColumnChooserPanel({ pos, gridApi, onToggle, onClose }) {
   );
 }
 
+// Columns shown on mobile (≤640px) — everything else is hidden and grid fits to width
+const MOBILE_COLS = new Set(['name', 'start_date', 'end_date', 'duration_days', 'percent_complete']);
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () => Promise.resolve(), onAdd = () => {}, onDelete = () => {}, onRefetch = () => {}, readOnly = false, colState = null }) {
@@ -1143,6 +1146,23 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   }, []);
 
   const onGridReady = useCallback(() => {
+    const isMobile = window.innerWidth <= 640;
+
+    if (isMobile) {
+      // Hide all columns except the mobile set, then autosize visible ones.
+      const allCols = gridRef.current?.api?.getColumns() ?? [];
+      const state = allCols.map((col) => ({
+        colId: col.getColId(),
+        hide: !MOBILE_COLS.has(col.getColId()) && !MOBILE_COLS.has(col.getColDef()?.field),
+      }));
+      try {
+        gridRef.current?.api?.applyColumnState({ state });
+        // Let AG Grid size columns to fit the visible viewport width
+        gridRef.current?.api?.sizeColumnsToFit();
+      } catch (_) {}
+      return; // Skip saved state on mobile
+    }
+
     // In read-only (web) mode, use the snapshot state passed as a prop.
     // In live mode, restore from localStorage.
     const stateToApply = readOnly

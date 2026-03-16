@@ -354,32 +354,6 @@ html, body, #root {
   .ag-header-cell-text { font-size: 9px !important; }
   .ag-header-cell { padding: 0 3px !important; }
 
-  /* Hide non-essential columns on phone — keep Name, % Done, Cost, Status */
-  .ag-header-cell[col-id="drag"],
-  .ag-cell[col-id="drag"],
-  .ag-header-cell[col-id="link"],
-  .ag-cell[col-id="link"],
-  .ag-header-cell[col-id="wbs"],
-  .ag-cell[col-id="wbs"],
-  .ag-header-cell[col-id="start_date"],
-  .ag-cell[col-id="start_date"],
-  .ag-header-cell[col-id="end_date"],
-  .ag-cell[col-id="end_date"],
-  .ag-header-cell[col-id="duration_days"],
-  .ag-cell[col-id="duration_days"],
-  .ag-header-cell[col-id="lag"],
-  .ag-cell[col-id="lag"],
-  .ag-header-cell[col-id="priority"],
-  .ag-cell[col-id="priority"],
-  .ag-header-cell[col-id="assigned_to"],
-  .ag-cell[col-id="assigned_to"],
-  .ag-header-cell[col-id="predecessor_ids"],
-  .ag-cell[col-id="predecessor_ids"],
-  .ag-header-cell[col-id="notes"],
-  .ag-cell[col-id="notes"] {
-    display: none !important;
-  }
-
   /* Shrink toolbar */
   .grid-toolbar-hint { display: none !important; }
   .grid-search-input { width: 110px !important; font-size: 9px !important; padding: 3px 6px !important; }
