@@ -19,19 +19,7 @@ function PriorityCell({ value }) {
   return <span className={`badge badge-${value}`}>{value}</span>;
 }
 function ProgressCell({ value, data }) {
-  // Grand total pinned row — show avg % with a full-width bar
-  if (data?.id === '_grand_total') {
-    const pct = Number(value) || 0;
-    const color = pct === 100 ? '#34d399' : pct > 0 ? '#60a5fa' : 'var(--text-muted)';
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-        <div className="progress-bar" style={{ flex: 1 }}>
-          <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
-        </div>
-        <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
-      </div>
-    );
-  }
+  if (data?.id === '_grand_total') return null; // shown in NameCell instead
   if (data?._isSection) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
@@ -76,7 +64,17 @@ function NameCell({ value, data, collapsedRef, onToggleSection }) {
     );
   }
   if (data?._isSection) {
-    return <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)' }}>{value}</span>;
+    const pct = data?.id === '_grand_total' ? (Number(data?.percent_complete) || 0) : null;
+    return (
+      <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{value}</span>
+        {pct !== null && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? '#34d399' : pct > 0 ? '#60a5fa' : 'var(--text-muted)', background: pct === 100 ? 'rgba(52,211,153,0.12)' : pct > 0 ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {pct}%
+          </span>
+        )}
+      </span>
+    );
   }
   const depth = data?.wbs ? (data.wbs.match(/\./g) || []).length : 0;
   const isComplete = data?.status === 'complete';
