@@ -29,6 +29,15 @@ router.post('/', (req, res) => {
   res.status(201).json({ id, name: name.trim() });
 });
 
+// PUT rename a resource
+router.put('/:id', (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const db = getDb();
+  db.prepare('UPDATE resources SET name = ? WHERE id = ?').run(name.trim(), req.params.id);
+  res.json({ ok: true, name: name.trim() });
+});
+
 // DELETE a resource
 router.delete('/:id', (req, res) => {
   const db = getDb();

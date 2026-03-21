@@ -89,6 +89,104 @@ function CostCell({ value, data }) {
   if (!n && !data?._isSection) return <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>—</span>;
   return <span style={{ fontWeight: data?._isSection ? 700 : 400, color: data?._isSection ? '#86efac' : 'inherit' }}>{USD.format(n || 0)}</span>;
 }
+function OverUnderCell({ value, data }) {
+  const n = Number(value);
+  const hasActual = Number(data?.actual) !== 0;
+  if (!data?._isSection && !hasActual) return <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>—</span>;
+  const color = n === 0 ? 'var(--text-muted)' : n > 0 ? '#f87171' : '#86efac';
+  const prefix = n > 0 ? '+' : '';
+  return <span style={{ fontWeight: data?._isSection ? 700 : 400, color }}>{prefix}{USD.format(n)}</span>;
+}
+
+const PAYMENT_STATUS_OPTIONS = ['In Process', 'Invoiced', 'Paid'];
+const PAYMENT_STATUS_STYLES = {
+  'In Process': { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: 'rgba(251,191,36,0.35)' },
+  'Invoiced':   { bg: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: 'rgba(96,165,250,0.35)' },
+  'Paid':       { bg: 'rgba(52,211,153,0.15)', color: '#34d399', border: 'rgba(52,211,153,0.35)' },
+};
+function PaymentStatusCell({ value, data, onPaymentStatusUpdate, readOnly = false }) {
+  const [open, setOpen] = useState(false);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+
+  if (data?._isSection) return null;
+
+  const openMenu = (e) => {
+    if (readOnly) return;
+    e.stopPropagation();
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setDropPos({ top: rect.bottom + 2, left: rect.left });
+    setOpen((o) => !o);
+  };
+
+  const select = (opt) => {
+    const next = value === opt ? null : opt;
+    onPaymentStatusUpdate(data.id, next);
+    setOpen(false);
+  };
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (!panelRef.current?.contains(e.target) && !triggerRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const s = PAYMENT_STATUS_STYLES[value] || {};
+  const badge = value
+    ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: 4, padding: '2px 9px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{value}</span>
+    : <span style={{ color: 'var(--text-muted)', fontSize: 12, opacity: 0.5 }}>— unset —</span>;
+
+  const panel = open && createPortal(
+    <div
+      ref={panelRef}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'fixed', top: dropPos.top, left: dropPos.left,
+        background: 'var(--bg-secondary, #1e293b)',
+        border: '1px solid var(--border, #334155)',
+        borderRadius: 6, boxShadow: '0 6px 20px rgba(0,0,0,0.6)',
+        zIndex: 99999, minWidth: 160, padding: '4px 0',
+      }}
+    >
+      {PAYMENT_STATUS_OPTIONS.map((opt) => {
+        const os = PAYMENT_STATUS_STYLES[opt];
+        return (
+          <div
+            key={opt}
+            onClick={() => select(opt)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary, #f1f5f9)', userSelect: 'none' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <span style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {value === opt && <span style={{ color: os.color, fontSize: 14 }}>✓</span>}
+            </span>
+            <span style={{ background: os.bg, color: os.color, border: `1px solid ${os.border}`, borderRadius: 4, padding: '2px 9px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{opt}</span>
+          </div>
+        );
+      })}
+    </div>,
+    document.body
+  );
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+      <div
+        ref={triggerRef}
+        onClick={openMenu}
+        style={{ display: 'flex', alignItems: 'center', width: '100%', height: '100%', padding: '0 4px', cursor: readOnly ? 'default' : 'pointer' }}
+      >
+        {badge}
+      </div>
+      {panel}
+    </div>
+  );
+}
 function PredecessorsCell(params) {
   const { value, data, allTasksRef, onOpenEditor, readOnly = false } = params;
   if (data?._isSection) return null;
@@ -311,11 +409,90 @@ function ContextMenu({ menu, onClose, onAction }) {
 const STATUS_OPTIONS = ['not_started', 'in_progress', 'complete', 'on_hold'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'critical'];
 
-function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResource, readOnly = false }) {
+function ResourceManagerDialog({ resources, onClose, onRename, onDelete }) {
+  const [editId, setEditId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const ref = useRef(null);
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const startEdit = (r) => { setEditId(r.id); setEditName(r.name); };
+  const cancelEdit = () => { setEditId(null); setEditName(''); };
+  const saveEdit = async (r) => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== r.name) await onRename(r.id, r.name, trimmed);
+    cancelEdit();
+  };
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div ref={ref} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary, #1e293b)', border: '1px solid var(--border, #334155)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.7)', width: 320, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '14px 18px 12px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #f1f5f9)', borderBottom: '1px solid var(--border, #334155)', flexShrink: 0 }}>Manage Resources</div>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
+          {resources.length === 0 && (
+            <div style={{ padding: '12px 18px', fontSize: 13, color: 'var(--text-muted, #94a3b8)' }}>No resources yet.</div>
+          )}
+          {resources.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', minHeight: 36 }}>
+              {editId === r.id ? (
+                <>
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(r); if (e.key === 'Escape') cancelEdit(); e.stopPropagation(); }}
+                    style={{ flex: 1, background: 'var(--bg, #0f172a)', border: '1px solid #60a5fa', borderRadius: 4, color: 'var(--text, #f1f5f9)', padding: '3px 8px', fontSize: 13, outline: 'none', minWidth: 0 }}
+                  />
+                  <button onClick={() => saveEdit(r)} style={{ background: '#3b82f6', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', padding: '3px 10px', fontSize: 12, flexShrink: 0 }}>Save</button>
+                  <button onClick={cancelEdit} style={{ background: 'transparent', border: '1px solid var(--border, #334155)', borderRadius: 4, color: 'var(--text-muted, #94a3b8)', cursor: 'pointer', padding: '3px 8px', fontSize: 12, flexShrink: 0 }}>✕</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ flex: 1, fontSize: 13, color: 'var(--text-primary, #f1f5f9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                  <button
+                    onClick={() => startEdit(r)}
+                    title="Rename"
+                    style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 13, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(96,165,250,0.12)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >✏</button>
+                  <button
+                    onClick={() => onDelete(r.id, r.name)}
+                    title="Delete"
+                    style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 13, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(248,113,113,0.12)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >🗑</button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border, #334155)', flexShrink: 0 }}>
+          <button
+            onClick={onClose}
+            style={{ background: 'var(--bg, #0f172a)', border: '1px solid var(--border, #334155)', borderRadius: 4, color: 'var(--text-muted, #94a3b8)', cursor: 'pointer', padding: '5px 0', fontSize: 12, width: '100%' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg, #0f172a)'; }}
+          >Close</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResource, onRenameResource, onDeleteResource, readOnly = false }) {
   const [open, setOpen] = useState(false);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
   const [addingNew, setAddingNew] = useState(false);
   const [newName, setNewName] = useState('');
+  const [managing, setManaging] = useState(false);
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -411,6 +588,16 @@ function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResou
           ＋ Add new resource...
         </div>
       )}
+      {!readOnly && (
+        <div
+          style={{ padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted, #94a3b8)', borderTop: '1px solid var(--border, #334155)', marginTop: 4 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-primary, #f1f5f9)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted, #94a3b8)'; }}
+          onClick={() => { setOpen(false); setManaging(true); }}
+        >
+          ✏ Edit / delete resources...
+        </div>
+      )}
     </div>,
     document.body
   );
@@ -437,6 +624,14 @@ function AssignedToCell({ value, data, resources, onAssignedToUpdate, onAddResou
         }
       </div>
       {panel}
+      {managing && (
+        <ResourceManagerDialog
+          resources={resources}
+          onClose={() => setManaging(false)}
+          onRename={onRenameResource}
+          onDelete={onDeleteResource}
+        />
+      )}
     </div>
   );
 }
@@ -559,7 +754,7 @@ const CostEditor = forwardRef(function CostEditor({ value, hourlyRate, stopEditi
   );
 });
 
-function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, hourlyRate, readOnly = false, collapsedRef = null, onToggleSection = null, collapseVersion = 0) {
+function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpdate, onLagUpdate, resources, onAssignedToUpdate, onAddResource, onRenameResource, onDeleteResource, onPaymentStatusUpdate, hourlyRate, readOnly = false, collapsedRef = null, onToggleSection = null, collapseVersion = 0) {
   const ed = (fn) => readOnly ? false : fn; // wrap editable functions
   return [
     { colId: 'drag', headerName: '', width: 36, rowDrag: !readOnly, sortable: false, filter: false, resizable: false, suppressMovable: true, suppressSizeToFit: true, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', color: 'var(--text-muted)', fontSize: 16, userSelect: 'none' }, cellRenderer: () => '⠿' },
@@ -580,8 +775,11 @@ function createColumnDefs(allTasksRef, onOpenEditor, onLinkStart, onDurationUpda
     { field: 'percent_complete', headerName: '% Done', width: 130, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: ProgressCell, cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'status', headerName: 'Status', width: 130, editable: ed((p) => !p.data?._isSection), cellRenderer: (p) => p.data?._isSection ? null : <StatusCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: STATUS_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'priority', headerName: 'Priority', width: 100, editable: ed((p) => !p.data?._isSection), cellRenderer: (p) => p.data?._isSection ? null : <PriorityCell value={p.value} />, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: PRIORITY_OPTIONS }, cellStyle: { display: 'flex', alignItems: 'center' } },
-    { field: 'cost', headerName: 'Cost (USD)', width: 125, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: CostCell, ...(readOnly ? {} : { cellEditor: CostEditor, cellEditorParams: { hourlyRate } }), cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
-    { field: 'assigned_to', headerName: 'Assigned To', width: 155, editable: false, suppressClickEdit: true, cellRenderer: AssignedToCell, cellRendererParams: { resources, onAssignedToUpdate, onAddResource, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', padding: '0 4px' } },
+    { field: 'cost', headerName: 'Estimate', width: 125, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: CostCell, ...(readOnly ? {} : { cellEditor: CostEditor, cellEditorParams: { hourlyRate } }), cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
+    { field: 'actual', headerName: 'Actual', width: 125, editable: ed((p) => !p.data?._isSection), type: 'numericColumn', cellRenderer: CostCell, ...(readOnly ? {} : { cellEditor: CostEditor, cellEditorParams: { hourlyRate } }), cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
+    { colId: 'over_under', headerName: 'Over/Under', width: 125, sortable: true, editable: false, type: 'numericColumn', valueGetter: (p) => (Number(p.data?.actual) || 0) - (Number(p.data?.cost) || 0), cellRenderer: OverUnderCell, cellStyle: (p) => ({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: p.data?._isSection ? 'rgba(52,211,153,0.06)' : 'transparent' }) },
+    { field: 'payment_status', headerName: 'Payment Status', width: 140, editable: false, suppressClickEdit: true, cellRenderer: PaymentStatusCell, cellRendererParams: { onPaymentStatusUpdate, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', padding: '0 4px' } },
+    { field: 'assigned_to', headerName: 'Assigned To', width: 155, editable: false, suppressClickEdit: true, cellRenderer: AssignedToCell, cellRendererParams: { resources, onAssignedToUpdate, onAddResource, onRenameResource, onDeleteResource, readOnly }, cellStyle: { display: 'flex', alignItems: 'center', padding: '0 4px' } },
     { field: 'predecessor_ids', headerName: 'Predecessors', width: 175, editable: false, suppressClickEdit: true, cellRenderer: PredecessorsCell, cellRendererParams: { allTasksRef, onOpenEditor, readOnly }, cellStyle: { display: 'flex', alignItems: 'center' } },
     { field: 'notes', headerName: 'Notes', flex: 1, minWidth: 100, editable: ed((p) => !p.data?._isSection), cellStyle: { display: 'flex', alignItems: 'center', color: 'var(--text-muted)' } },
   ];
@@ -597,7 +795,10 @@ const CHOOSABLE_COLS = [
   { id: 'percent_complete', label: '% Done' },
   { id: 'status',           label: 'Status' },
   { id: 'priority',         label: 'Priority' },
-  { id: 'cost',             label: 'Cost (USD)' },
+  { id: 'cost',             label: 'Estimate' },
+  { id: 'actual',           label: 'Actual' },
+  { id: 'over_under',       label: 'Over/Under' },
+  { id: 'payment_status',   label: 'Payment Status' },
   { id: 'assigned_to',      label: 'Assigned To' },
   { id: 'predecessor_ids',  label: 'Predecessors' },
   { id: 'notes',            label: 'Notes' },
@@ -758,6 +959,16 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     };
   }, []); // mount once — reads from ref
 
+  // Safety-net: ensure the drag-handle column is always visible on desktop.
+  // Adding this hook also causes React Fast Refresh to remount the component,
+  // which re-fires onGridReady and applies the corrected localStorage state.
+  useEffect(() => {
+    if (readOnly || window.innerWidth <= 640) return;
+    gridRef.current?.api?.applyColumnState({
+      state: [{ colId: 'drag', hide: false }, { colId: 'link', hide: false }],
+    });
+  }, []); // mount-once
+
   const dragOverRowRef = useRef(null);
   const clearDragHighlight = useCallback(() => {
     if (dragOverRowRef.current) {
@@ -804,11 +1015,12 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
       if (!secRow) return [];
       const children = allTasksRef.current.filter((c) => c.wbs?.startsWith(secWbs + '.'));
       const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
+      const childActual = children.reduce((s, c) => s + (Number(c.actual) || 0), 0);
       const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
       const childPct = children.length
         ? Math.round(children.reduce((s, c) => s + (Number(c.percent_complete) || 0), 0) / children.length)
         : null;
-      return [{ ...secRow, _isSection: true, cost: childCost, duration_days: childDuration, _sectionPct: childPct }];
+      return [{ ...secRow, _isSection: true, cost: childCost, actual: childActual, duration_days: childDuration, _sectionPct: childPct }];
     });
     gridRef.current?.api?.applyTransaction({ update: [...changedTasks, ...sectionUpdates] });
   }, []);
@@ -850,6 +1062,15 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     for (const t of changed) await onUpdate(t.id, t);
   }, [onUpdate, applyTaskUpdates]);
 
+  const handlePaymentStatusUpdate = useCallback(async (taskId, value) => {
+    const row = allTasksRef.current.find((t) => t.id === taskId);
+    if (!row) return;
+    const updated = { ...row, payment_status: value };
+    allTasksRef.current = allTasksRef.current.map((x) => (x.id === taskId ? updated : x));
+    gridRef.current?.api?.applyTransaction({ update: [updated] });
+    await onUpdate(taskId, updated);
+  }, [onUpdate]);
+
   const handleAssignedToUpdate = useCallback(async (taskId, name) => {
     const row = allTasksRef.current.find((t) => t.id === taskId);
     if (!row) return;
@@ -859,7 +1080,47 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     await onUpdate(taskId, updated);
   }, [onUpdate]);
 
-  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, collapsedRef, toggleSection, collapseVersion), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, hourlyRate, readOnly, toggleSection, collapseVersion]);
+  const handleRenameResource = useCallback(async (id, oldName, newName) => {
+    try {
+      await fetch(`/api/resources/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      setResources((prev) => prev.map((r) => r.id === id ? { ...r, name: newName } : r).sort((a, b) => a.name.localeCompare(b.name)));
+      const affected = allTasksRef.current.filter((t) => {
+        const names = t.assigned_to ? t.assigned_to.split(',').map((s) => s.trim()).filter(Boolean) : [];
+        return names.includes(oldName);
+      });
+      for (const task of affected) {
+        const names = task.assigned_to.split(',').map((s) => s.trim()).filter(Boolean).map((n) => n === oldName ? newName : n);
+        const updated = { ...task, assigned_to: names.join(', ') };
+        allTasksRef.current = allTasksRef.current.map((x) => (x.id === task.id ? updated : x));
+        gridRef.current?.api?.applyTransaction({ update: [updated] });
+        await onUpdate(task.id, updated);
+      }
+    } catch (err) { console.error('renameResource:', err); }
+  }, [onUpdate]);
+
+  const handleDeleteResource = useCallback(async (id, name) => {
+    try {
+      await fetch(`/api/resources/${id}`, { method: 'DELETE' });
+      setResources((prev) => prev.filter((r) => r.id !== id));
+      const affected = allTasksRef.current.filter((t) => {
+        const names = t.assigned_to ? t.assigned_to.split(',').map((s) => s.trim()).filter(Boolean) : [];
+        return names.includes(name);
+      });
+      for (const task of affected) {
+        const names = task.assigned_to.split(',').map((s) => s.trim()).filter(Boolean).filter((n) => n !== name);
+        const updated = { ...task, assigned_to: names.join(', ') };
+        allTasksRef.current = allTasksRef.current.map((x) => (x.id === task.id ? updated : x));
+        gridRef.current?.api?.applyTransaction({ update: [updated] });
+        await onUpdate(task.id, updated);
+      }
+    } catch (err) { console.error('deleteResource:', err); }
+  }, [onUpdate]);
+
+  const columnDefs = useMemo(() => createColumnDefs(allTasksRef, handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, handleRenameResource, handleDeleteResource, handlePaymentStatusUpdate, hourlyRate, readOnly, collapsedRef, toggleSection, collapseVersion), [handleOpenEditor, handleLinkStart, handleDurationUpdate, handleLagUpdate, resources, handleAssignedToUpdate, handleAddResource, handleRenameResource, handleDeleteResource, handlePaymentStatusUpdate, hourlyRate, readOnly, toggleSection, collapseVersion]);
 
   // Overlay section cost + duration = sum of children; mark section rows
   // Filter out children of collapsed sections
@@ -871,11 +1132,12 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
         if (!isSection) return t;
         const children = tasks.filter((c) => c.wbs?.startsWith(t.wbs + '.'));
         const childCost = children.reduce((s, c) => s + (Number(c.cost) || 0), 0);
+        const childActual = children.reduce((s, c) => s + (Number(c.actual) || 0), 0);
         const childDuration = children.reduce((s, c) => s + (Number(c.duration_days) || 0), 0);
         const childPct = children.length
           ? Math.round(children.reduce((s, c) => s + (Number(c.percent_complete) || 0), 0) / children.length)
           : null;
-        return { ...t, _isSection: true, cost: childCost, duration_days: childDuration, _sectionPct: childPct };
+        return { ...t, _isSection: true, cost: childCost, actual: childActual, duration_days: childDuration, _sectionPct: childPct };
       })
       .filter((t) => {
         if (!t.wbs || !t.wbs.includes('.')) return true; // always show sections + grand total
@@ -887,10 +1149,11 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   const grandTotalRow = useMemo(() => {
     const leafTasks = tasks.filter((t) => !t.wbs || t.wbs.includes('.'));
     const total = leafTasks.reduce((s, t) => s + (Number(t.cost) || 0), 0);
+    const totalActual = leafTasks.reduce((s, t) => s + (Number(t.actual) || 0), 0);
     const avgPct = leafTasks.length
       ? Math.round(leafTasks.reduce((s, t) => s + (Number(t.percent_complete) || 0), 0) / leafTasks.length)
       : 0;
-    return [{ id: '_grand_total', name: 'PROJECT TOTAL', cost: total, percent_complete: avgPct, _isSection: true }];
+    return [{ id: '_grand_total', name: 'PROJECT TOTAL', cost: total, actual: totalActual, percent_complete: avgPct, _isSection: true }];
   }, [tasks]);
 
   const defaultColDef = useMemo(() => ({ sortable: true, filter: true, resizable: true, suppressMovable: false, suppressHeaderMenuButton: readOnly }), [readOnly]);
@@ -1136,9 +1399,10 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
   const handleExportCSV = useCallback(() => { gridRef.current?.api.exportDataAsCsv({ fileName: 'tasks.csv' }); }, []);
 
   // ── Column state persistence ─────────────────────────────────────────────
-  const COL_STATE_KEY = 'pm_col_state';
+  const COL_STATE_KEY = 'pm_col_state_v2';
 
   const saveColState = useCallback(() => {
+    if (window.innerWidth <= 640) return; // don't overwrite desktop layout with mobile column visibility
     const state = gridRef.current?.api?.getColumnState();
     if (state) localStorage.setItem(COL_STATE_KEY, JSON.stringify(state));
   }, []);
@@ -1165,7 +1429,7 @@ export default function TaskGrid({ tasks, projectId, hourlyRate, onUpdate = () =
     // In live mode, restore from localStorage.
     const stateToApply = readOnly
       ? colState
-      : (() => { try { const s = localStorage.getItem(COL_STATE_KEY); return s ? JSON.parse(s) : null; } catch (_) { return null; } })();
+      : (() => { try { const s = localStorage.getItem(COL_STATE_KEY); if (!s) return null; const parsed = JSON.parse(s); return parsed.map((c) => c.colId === 'drag' || c.colId === 'link' ? { ...c, hide: false } : c); } catch (_) { return null; } })();
     if (stateToApply) {
       try {
         gridRef.current?.api?.applyColumnState({ state: stateToApply, applyOrder: true });

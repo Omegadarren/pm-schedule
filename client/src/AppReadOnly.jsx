@@ -41,31 +41,96 @@ function ReadOnlyBanner({ exportedAt }) {
   );
 }
 
-// ── Read-only narrative display ────────────────────────────────────────
-function NarrativePanel({ narrative }) {
-  if (!narrative) return null;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function parseNarrativeEntries(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (_) {}
+  if (typeof raw === 'string' && raw.trim()) {
+    return [{ id: 'legacy-0', timestamp: null, text: raw.trim() }];
+  }
+  return [];
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return 'Legacy entry';
+  return new Date(ts).toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// ── Read-only narrative dialog ────────────────────────────────────────────────
+function NarrativeDialog({ narrative, projectName, open, onClose }) {
+  const entries = parseNarrativeEntries(narrative);
+
+  if (!open) return null;
+
+  const overlay = {
+    position: 'fixed', inset: 0, zIndex: 2000,
+    background: 'rgba(0,0,0,0.55)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '16px',
+  };
+  const dialog = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    width: '100%', maxWidth: 640,
+    maxHeight: '85vh',
+    display: 'flex', flexDirection: 'column',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+    overflow: 'hidden',
+  };
+  const btnBase = {
+    cursor: 'pointer', border: 'none', borderRadius: 5,
+    fontSize: 12, padding: '5px 11px', fontFamily: 'inherit',
+  };
+
   return (
-    <div style={{
-      borderTop: '1px solid var(--border)',
-      background: 'var(--surface)',
-      padding: '14px 20px 18px',
-      flexShrink: 0,
-    }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8, letterSpacing: 0.3 }}>
-        📝 Project Narrative
-      </div>
-      <div style={{
-        background: 'var(--surface2)',
-        border: '1px solid var(--border)',
-        borderRadius: 6,
-        padding: '10px 14px',
-        fontSize: 13,
-        lineHeight: 1.7,
-        color: 'var(--text)',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-      }}>
-        {narrative}
+    <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={dialog}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 18px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+            📝 Project Narrative — {projectName}
+          </span>
+          <button
+            onClick={onClose}
+            style={{ ...btnBase, background: 'transparent', color: 'var(--text-muted)', fontSize: 18, padding: '2px 8px' }}
+            title="Close"
+          >✕</button>
+        </div>
+
+        {/* Scrollable log */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {entries.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
+              No narrative entries recorded for this project.
+            </div>
+          ) : (
+            entries.map((entry) => (
+              <div key={entry.id} style={{
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                borderRadius: 7,
+                padding: '10px 12px',
+              }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 5, letterSpacing: 0.2 }}>
+                  🕐 {formatTimestamp(entry.timestamp)}
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {entry.text}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
@@ -95,6 +160,7 @@ export default function AppReadOnly() {
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [activeTab, setActiveTab]                 = useState('grid');
+  const [narrativeOpen, setNarrativeOpen]         = useState(false);
 
   // Auto-select first project once data loads
   React.useEffect(() => {
@@ -176,7 +242,40 @@ export default function AppReadOnly() {
             )}
           </div>
 
-          <NarrativePanel narrative={selectedProject?.narrative} />
+          {selectedProject && (
+            <div style={{
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface)',
+              padding: '10px 20px',
+              flexShrink: 0,
+            }}>
+              <button
+                onClick={() => setNarrativeOpen(true)}
+                style={{
+                  cursor: 'pointer',
+                  background: 'var(--surface2)',
+                  color: 'var(--text)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 7,
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                }}
+              >
+                📝 View Project Narrative
+              </button>
+            </div>
+          )}
+
+          <NarrativeDialog
+            narrative={selectedProject?.narrative}
+            projectName={selectedProject?.name}
+            open={narrativeOpen}
+            onClose={() => setNarrativeOpen(false)}
+          />
         </div>
       </div>
     </>

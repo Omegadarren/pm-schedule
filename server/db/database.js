@@ -116,6 +116,8 @@ function initDb() {
 
   // Safe migration: add cost column if it doesn't exist yet
   try { db.exec('ALTER TABLE tasks ADD COLUMN cost REAL DEFAULT 0'); } catch (_) {}
+  try { db.exec(`ALTER TABLE tasks ADD COLUMN payment_status TEXT DEFAULT NULL`); } catch (_) {}
+  try { db.exec('ALTER TABLE tasks ADD COLUMN actual REAL DEFAULT 0'); } catch (_) {}
 
   console.log('[DB] Database initialized:', DB_PATH);
 }

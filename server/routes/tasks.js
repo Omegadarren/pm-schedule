@@ -26,25 +26,25 @@ router.post('/', (req, res) => {
   const {
     project_id, parent_task_id, wbs, name, start_date, end_date,
     duration_days, percent_complete, assigned_to, predecessor_ids,
-    priority, status, notes, cost, row_order, _socketId,
+    priority, status, notes, cost, actual, payment_status, row_order, _socketId,
   } = req.body;
 
   if (!project_id || !name) return res.status(400).json({ error: 'project_id and name are required' });
 
-  const id = uuidv4();
+  const id = req.body.id || uuidv4();
   db.prepare(`
     INSERT INTO tasks (
       id, project_id, parent_task_id, wbs, name, start_date, end_date,
       duration_days, percent_complete, assigned_to, predecessor_ids,
-      priority, status, notes, cost, row_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      priority, status, notes, cost, actual, payment_status, row_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, project_id, parent_task_id || null, wbs || null, name,
     start_date || null, end_date || null, duration_days || 1,
     percent_complete || 0, assigned_to || null,
     JSON.stringify(predecessor_ids || []),
     priority || 'medium', status || 'not_started', notes || null,
-    cost || 0, row_order || 0
+    cost || 0, actual || 0, payment_status || null, row_order || 0
   );
 
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
@@ -64,7 +64,7 @@ router.put('/:id', (req, res) => {
   const db = getDb();
   const {
     name, start_date, end_date, duration_days, percent_complete,
-    assigned_to, predecessor_ids, priority, status, notes, cost, wbs, row_order, _socketId,
+    assigned_to, predecessor_ids, priority, status, notes, cost, actual, payment_status, wbs, row_order, _socketId,
   } = req.body;
 
   // predecessor_ids arrives as a JSON string from the client — don't re-stringify it
@@ -78,13 +78,13 @@ router.put('/:id', (req, res) => {
     UPDATE tasks SET
       name=?, start_date=?, end_date=?, duration_days=?, percent_complete=?,
       assigned_to=?, predecessor_ids=?, priority=?, status=?, notes=?,
-      cost=?, wbs=?, row_order=?, updated_at=datetime('now')
+      cost=?, actual=?, payment_status=?, wbs=?, row_order=?, updated_at=datetime('now')
     WHERE id=?
   `).run(
     name, start_date || null, end_date || null, duration_days, percent_complete,
     assigned_to || null, predsValue,
     priority, status, notes || null,
-    cost ?? 0, wbs || null, row_order || 0, req.params.id
+    cost ?? 0, actual ?? 0, payment_status ?? null, wbs || null, row_order || 0, req.params.id
   );
 
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);

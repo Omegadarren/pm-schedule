@@ -18,7 +18,7 @@ function PublishModal({ onClose }) {
     (async () => {
       try {
         const colState = (() => {
-          try { const s = localStorage.getItem('pm_col_state'); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+          try { const s = localStorage.getItem('pm_col_state_v2'); return s ? JSON.parse(s) : null; } catch (_) { return null; }
         })();
 
         const res = await fetch('/api/publish', {
@@ -141,7 +141,7 @@ function PublishModal({ onClose }) {
   );
 }
 
-export default function Header({ project, tasks, activeTab, onTabChange, connected, readOnly = false }) {
+export default function Header({ project, tasks, activeTab, onTabChange, connected, readOnly = false, canUndo = false, canRedo = false, onUndo, onRedo }) {
   const [printing, setPrinting]         = useState(false);
   const [showPublish, setShowPublish]   = useState(false);
   const [webUrl, setWebUrl]             = useState(null);
@@ -195,6 +195,34 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
         )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Undo / Redo */}
+          {!readOnly && project && (
+            <div style={{ display: 'flex', gap: 2 }}>
+              {[{ label: '↩ Undo', can: canUndo, fn: onUndo, title: 'Undo (Ctrl+Z)' }, { label: '↪ Redo', can: canRedo, fn: onRedo, title: 'Redo (Ctrl+Y)' }].map(({ label, can, fn, title }) => (
+                <button
+                  key={label}
+                  onClick={fn}
+                  disabled={!can}
+                  title={title}
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    background: can ? 'rgba(255,255,255,0.07)' : 'transparent',
+                    border: `1px solid ${can ? 'var(--border)' : 'transparent'}`,
+                    borderRadius: 6,
+                    color: can ? 'var(--text)' : 'var(--text-muted)',
+                    cursor: can ? 'pointer' : 'not-allowed',
+                    padding: '5px 10px', fontSize: 12,
+                    opacity: can ? 1 : 0.35,
+                    transition: 'all 0.15s',
+                    fontFamily: 'inherit',
+                  }}
+                  onMouseEnter={(e) => { if (can) e.currentTarget.style.background = 'rgba(255,255,255,0.13)'; }}
+                  onMouseLeave={(e) => { if (can) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+                >{label}</button>
+              ))}
+            </div>
+          )}
+
           {project && (
             <button
               onClick={handlePrint}

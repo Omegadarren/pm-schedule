@@ -92,7 +92,7 @@ export function generateProjectReport(project, tasks) {
     { label: 'Sections',       value: String(sections.length),   color: C.blue },
     { label: 'Completed',      value: String(completedCount),    color: C.green },
     { label: 'Avg % Complete', value: `${avgPct}%`,              color: avgPct >= 75 ? C.green : avgPct >= 40 ? C.amber : C.red },
-    { label: 'Total Cost',     value: USD.format(totalCost),     color: C.navy },
+    { label: 'Total Estimate', value: USD.format(totalCost),     color: C.navy },
   ];
 
   // Info card (left half)
@@ -151,14 +151,18 @@ export function generateProjectReport(project, tasks) {
   // ── Task table ──────────────────────────────────────────────────────────────
   const sorted = [...tasks].sort((a, b) => (a.row_order ?? 0) - (b.row_order ?? 0));
 
-  const head = [['WBS', 'Task / Section', 'Start', 'End', 'Days', 'Status', '%', 'Cost (USD)', 'Assigned To']];
+  const head = [['WBS', 'Task / Section', 'Start', 'End', 'Days', 'Status', '%', 'Estimate', 'Actual', 'Over/Under', 'Assigned To']];
 
   const body = sorted.map((t) => {
     const isSec = !!(t.wbs && !t.wbs.includes('.'));
     if (isSec) {
       // Section row — span visually by repeating name, leave detail cols blank
-      return [t.wbs || '', t.name || '', '', '', '', '', '', '', ''];
+      return [t.wbs || '', t.name || '', '', '', '', '', '', '', '', '', ''];
     }
+    const estimate = Number(t.cost) || 0;
+    const actual = Number(t.actual) || 0;
+    const overUnder = actual - estimate;
+    const overUnderStr = actual ? (overUnder > 0 ? '+' : '') + USD.format(overUnder) : '—';
     return [
       t.wbs || '',
       t.name || '',
@@ -167,7 +171,9 @@ export function generateProjectReport(project, tasks) {
       t.duration_days != null ? String(t.duration_days) : '—',
       statusLabel(t.status),
       t.percent_complete != null ? `${t.percent_complete}%` : '0%',
-      t.cost ? USD.format(Number(t.cost)) : '—',
+      estimate ? USD.format(estimate) : '—',
+      actual ? USD.format(actual) : '—',
+      overUnderStr,
       t.assigned_to || '—',
     ];
   });

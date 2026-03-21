@@ -56,9 +56,20 @@ export function useTasks(projectId) {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
   }, []);
 
+  // Silent refetch: re-fetches data without showing the loading spinner.
+  // Use this for background refreshes (e.g. after drag-reorder) so the grid
+  // doesn't unmount and remount on every operation.
+  const silentRefetch = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const { data } = await axios.get(`/api/tasks/project/${projectId}`);
+      setTasks(data);
+    } catch (_) {}
+  }, [projectId]);
+
   return {
     tasks, loading, error,
-    addTask, updateTask, deleteTask, refetch: fetchTasks,
+    addTask, updateTask, deleteTask, refetch: fetchTasks, silentRefetch,
     applyRemoteUpdate, applyRemoteAdd, applyRemoteDelete,
   };
 }
