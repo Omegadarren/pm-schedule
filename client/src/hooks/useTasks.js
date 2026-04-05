@@ -113,5 +113,32 @@ export function useProjects() {
     return updated;
   }, []);
 
-  return { projects, loading, createProject, deleteProject, renameProject, updateProject, refetch: fetchProjects };
+  // Sync a project object directly into local state without an API call.
+  // Used after share-token generation/revocation, where the API response
+  // already contains the updated project.
+  const syncProject = useCallback((updatedProject) => {
+    setProjects((prev) => prev.map((p) => p.id === updatedProject.id ? updatedProject : p));
+  }, []);
+
+  return { projects, loading, createProject, deleteProject, renameProject, updateProject, syncProject, refetch: fetchProjects };
+}
+
+export function useAllTasks(enabled = false) {
+  const [allTasks, setAllTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAll = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
+    try {
+      const { data } = await axios.get('/api/tasks/master');
+      setAllTasks(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  return { allTasks, loading, refetch: fetchAll };
 }

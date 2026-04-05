@@ -33,11 +33,11 @@ function run(cmd, opts = {}) {
 // ── main ─────────────────────────────────────────────────────────────────────
 try {
   // ── 1. Export data ──────────────────────────────────────────────────────────
-  console.log('\n📦  Step 1/3 — Exporting data from database...');
+  console.log('\n📦  Step 1/4 — Exporting data from database...');
   require('./export-data');
 
   // ── 2. Build static Vite bundle ─────────────────────────────────────────────
-  console.log('\n🔨  Step 2/3 — Building static app...');
+  console.log('\n🔨  Step 2/4 — Building static app...');
 
   const distDir  = path.join(clientDir, 'dist');
 
@@ -74,10 +74,48 @@ try {
     console.log('⚠   Build exited non-zero but dist/ looks good — continuing.');
   }
 
-  // ── 3. Push dist → gh-pages ─────────────────────────────────────────────────
+  // ── 3. Generate per-project client share pages ─────────────────────────────
+  console.log('\n🔗  Step 3/4 — Generating client share pages...');
+  const webDataPath = path.join(distDir, 'web-data.json');
+  let shareCount = 0;
+  if (fs.existsSync(webDataPath)) {
+    const webData = JSON.parse(fs.readFileSync(webDataPath, 'utf8'));
+    const distIndexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    for (const project of (webData.projects || [])) {
+      if (!project.share_token) continue;
+      const token = project.share_token;
+      const projectTasks     = (webData.tasks     || {})[project.id] ?? [];
+      const projectResources = (webData.resources || {})[project.id] ?? [];
+      // Omit share_token from what the customer receives — unnecessary and cleaner
+      const { share_token: _tok, ...safeProject } = project;
+      const sharePayload = JSON.stringify({
+        project:    safeProject,
+        tasks:      projectTasks,
+        resources:  projectResources,
+        exportedAt: webData.exportedAt,
+      });
+      // Inject the data as an inline script before </head>
+      const injectedHtml = distIndexHtml.replace(
+        '</head>',
+        `  <script>window.__PROJECT_SHARE__=${sharePayload};</script>\n</head>`
+      );
+      const shareDir = path.join(distDir, 'projects', token);
+      fs.mkdirSync(shareDir, { recursive: true });
+      fs.writeFileSync(path.join(shareDir, 'index.html'), injectedHtml, 'utf8');
+      console.log(`  📎  ${project.name}  →  /projects/${token}/`);
+      shareCount++;
+    }
+  }
+  if (shareCount === 0) {
+    console.log('  ℹ️   No share links yet — use "🔗 Share Link" in the app to create one, then publish again.');
+  } else {
+    console.log(`\n  Generated ${shareCount} client share page(s).`);
+  }
+
+  // ── 4. Push dist → gh-pages ─────────────────────────────────────────────────
   // Copy dist into a fresh OS temp dir so there is NEVER a stale .git folder.
   // This sidesteps Windows file-locking issues entirely.
-  console.log('\n🚀  Step 3/3 — Pushing to GitHub Pages...');
+  console.log('\n🚀  Step 4/4 — Pushing to GitHub Pages...');
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-deploy-'));
   try {

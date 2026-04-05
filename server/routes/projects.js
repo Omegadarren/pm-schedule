@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 // GET all projects
 router.get('/', (req, res) => {
@@ -52,6 +53,24 @@ router.delete('/:id', (req, res) => {
   const db = getDb();
   db.prepare('DELETE FROM projects WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+// POST /api/projects/:id/share-token — generate (or rotate) a share token
+router.post('/:id/share-token', (req, res) => {
+  const db = getDb();
+  const project = db.prepare('SELECT id FROM projects WHERE id = ?').get(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Project not found' });
+  // 9 random bytes → 12 URL-safe base64 characters (~72 bits entropy)
+  const token = crypto.randomBytes(9).toString('base64url');
+  db.prepare(`UPDATE projects SET share_token=?, updated_at=datetime('now') WHERE id=?`).run(token, req.params.id);
+  res.json(db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id));
+});
+
+// DELETE /api/projects/:id/share-token — revoke share token
+router.delete('/:id/share-token', (req, res) => {
+  const db = getDb();
+  db.prepare(`UPDATE projects SET share_token=NULL, updated_at=datetime('now') WHERE id=?`).run(req.params.id);
+  res.json(db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id));
 });
 
 module.exports = router;

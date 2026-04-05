@@ -79,6 +79,7 @@ function initDb() {
   // Migrations – add columns that may not exist in older DBs
   try { db.exec(`ALTER TABLE projects ADD COLUMN hourly_rate REAL DEFAULT 0`); } catch (_) {}
   try { db.exec(`ALTER TABLE projects ADD COLUMN narrative TEXT DEFAULT ''`); } catch (_) {}
+  try { db.exec(`ALTER TABLE projects ADD COLUMN share_token TEXT DEFAULT NULL`); } catch (_) {}
 
   // Seed a demo project if empty
   const count = db.prepare('SELECT COUNT(*) as n FROM projects').get();

@@ -12,6 +12,18 @@ router.get('/project/:projectId', (req, res) => {
   res.json(tasks);
 });
 
+// GET all tasks across all projects (Master Schedule view)
+router.get('/master', (req, res) => {
+  const db = getDb();
+  const tasks = db.prepare(`
+    SELECT t.*, p.name as project_name, p.color as project_color
+    FROM tasks t
+    JOIN projects p ON t.project_id = p.id
+    ORDER BY p.created_at ASC, t.row_order ASC, t.wbs ASC
+  `).all();
+  res.json(tasks);
+});
+
 // GET single task
 router.get('/:id', (req, res) => {
   const db = getDb();

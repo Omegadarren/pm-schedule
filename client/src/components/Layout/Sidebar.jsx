@@ -249,6 +249,18 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
           📅 PM Schedule
         </div>
 
+        {/* Master Schedule entry */}
+        <div
+          className={`sidebar-item ${selectedProjectId === '__master__' ? 'active' : ''}`}
+          onClick={() => onSelectProject('__master__')}
+          style={{ marginBottom: 2 }}
+        >
+          <span>📊</span>
+          <span>Master Schedule</span>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '6px 8px 8px' }} />
+
         <div className="sidebar-section-title">Projects</div>
 
         {projects.map((p) => (

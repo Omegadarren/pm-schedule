@@ -3,7 +3,9 @@ import Sidebar from './components/Layout/Sidebar.jsx';
 import Header from './components/Layout/Header.jsx';
 import TaskGrid from './components/Grid/TaskGrid.jsx';
 import GanttView from './components/Gantt/GanttView.jsx';
-import { useTasks, useProjects } from './hooks/useTasks.js';
+import MasterGrid from './components/MasterSchedule/MasterGrid.jsx';
+import MasterGantt from './components/MasterSchedule/MasterGantt.jsx';
+import { useTasks, useProjects, useAllTasks } from './hooks/useTasks.js';
 import { useSocket } from './hooks/useSocket.js';
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -257,8 +259,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('grid');
   const [narrativeOpen, setNarrativeOpen] = useState(false);
 
+  const isMaster = selectedProjectId === '__master__';
+
   // Projects
-  const { projects, createProject, renameProject, updateProject, deleteProject } = useProjects();
+  const { projects, createProject, renameProject, updateProject, deleteProject, syncProject } = useProjects();
 
   // Auto-select first project if none selected
   React.useEffect(() => {
@@ -267,15 +271,18 @@ export default function App() {
     }
   }, [projects, selectedProjectId]);
 
-  // Tasks for selected project
+  // Tasks for selected project (skip when in master mode)
   const {
     tasks, loading, error,
     addTask, updateTask, deleteTask, refetch, silentRefetch,
     applyRemoteUpdate, applyRemoteAdd, applyRemoteDelete,
-  } = useTasks(selectedProjectId);
+  } = useTasks(isMaster ? null : selectedProjectId);
 
-  // Realtime Socket.IO
-  const { connected } = useSocket(selectedProjectId, {
+  // All tasks for master schedule view
+  const { allTasks, loading: masterLoading, refetch: refetchAll } = useAllTasks(isMaster);
+
+  // Realtime Socket.IO (no room when master)
+  const { connected } = useSocket(isMaster ? null : selectedProjectId, {
     onTaskUpdated: applyRemoteUpdate,
     onTaskAdded: applyRemoteAdd,
     onTaskDeleted: applyRemoteDelete,
@@ -474,14 +481,25 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           connected={connected}
+          isMaster={isMaster}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={handleUndo}
           onRedo={handleRedo}
+          onProjectShareUpdated={syncProject}
         />
 
         <div className="view-container">
-          {!selectedProjectId ? (
+          {isMaster ? (
+            masterLoading ? (
+              <div className="loading">Loading all projects…</div>
+            ) : (
+              <>
+                {activeTab === 'grid' && <MasterGrid tasks={allTasks} />}
+                {activeTab === 'gantt' && <MasterGantt tasks={allTasks} />}
+              </>
+            )
+          ) : !selectedProjectId ? (
             <div className="empty-state">
               <div className="icon">📁</div>
               <div>Select or create a project to get started.</div>
@@ -515,7 +533,7 @@ export default function App() {
           )}
         </div>
 
-        {selectedProject && (
+        {selectedProject && !isMaster && (
           <div style={{
             borderTop: '1px solid var(--border)',
             background: 'var(--surface)',

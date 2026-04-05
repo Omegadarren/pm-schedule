@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateProjectReport } from '../../utils/generateReport.js';
+import ShareLinksModal from '../ShareLinksModal.jsx';
 
 const TABS = [
   { id: 'grid', label: '⊞ Grid' },
@@ -141,9 +142,10 @@ function PublishModal({ onClose }) {
   );
 }
 
-export default function Header({ project, tasks, activeTab, onTabChange, connected, readOnly = false, canUndo = false, canRedo = false, onUndo, onRedo }) {
+export default function Header({ project, tasks, activeTab, onTabChange, connected, readOnly = false, isMaster = false, canUndo = false, canRedo = false, onUndo, onRedo, onProjectShareUpdated }) {
   const [printing, setPrinting]         = useState(false);
   const [showPublish, setShowPublish]   = useState(false);
+  const [showShareLinks, setShowShareLinks] = useState(false);
   const [webUrl, setWebUrl]             = useState(null);
 
   useEffect(() => {
@@ -166,7 +168,27 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
   return (
     <>
       <header className="app-header">
-        {project ? (
+        {isMaster ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1>📊 Master Schedule</h1>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 4 }}>
+                Read-only — select a project to edit
+              </span>
+            </div>
+            <div className="header-tabs">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => onTabChange(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : project ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Project:</span>
@@ -196,7 +218,7 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Undo / Redo */}
-          {!readOnly && project && (
+          {!readOnly && !isMaster && project && (
             <div style={{ display: 'flex', gap: 2 }}>
               {[{ label: '↩ Undo', can: canUndo, fn: onUndo, title: 'Undo (Ctrl+Z)' }, { label: '↪ Redo', can: canRedo, fn: onRedo, title: 'Redo (Ctrl+Y)' }].map(({ label, can, fn, title }) => (
                 <button
@@ -223,7 +245,7 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
             </div>
           )}
 
-          {project && (
+          {!isMaster && project && (
             <button
               onClick={handlePrint}
               disabled={printing}
@@ -264,6 +286,25 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
             </a>
           )}
 
+          {/* Share Link button */}
+          {!readOnly && !isMaster && project && (
+            <button
+              onClick={() => setShowShareLinks(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(251,191,36,0.12)',
+                border: '1px solid rgba(251,191,36,0.35)',
+                borderRadius: 6, color: '#fcd34d', cursor: 'pointer',
+                padding: '5px 12px', fontSize: 12, fontWeight: 500,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251,191,36,0.22)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(251,191,36,0.12)'; }}
+            >
+              🔗 Share Link
+            </button>
+          )}
+
           {/* Publish button — only in the live (non-read-only) app */}
           {!readOnly && (
             <button
@@ -293,6 +334,13 @@ export default function Header({ project, tasks, activeTab, onTabChange, connect
       </header>
 
       {showPublish && <PublishModal onClose={() => setShowPublish(false)} />}
+      {showShareLinks && project && (
+        <ShareLinksModal
+          project={project}
+          onProjectUpdated={(updated) => { onProjectShareUpdated?.(updated); }}
+          onClose={() => setShowShareLinks(false)}
+        />
+      )}
     </>
   );
 }

@@ -23,20 +23,21 @@ function useDevice() {
 }
 
 // ── Read-only banner shown at the top of the page ────────────────────────────
-function ReadOnlyBanner({ exportedAt }) {
+function ReadOnlyBanner({ exportedAt, isShareMode }) {
   const dateStr = exportedAt
     ? new Date(exportedAt).toLocaleString()
     : 'unknown';
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-      background: 'rgba(16,185,129,0.12)', borderBottom: '1px solid rgba(16,185,129,0.35)',
+      background: isShareMode ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)',
+      borderBottom: `1px solid ${isShareMode ? 'rgba(59,130,246,0.35)' : 'rgba(16,185,129,0.35)'}`,
       padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 10,
-      fontSize: 12, color: '#6ee7b7',
+      fontSize: 12, color: isShareMode ? '#93c5fd' : '#6ee7b7',
     }}>
-      <span style={{ fontWeight: 700 }}>👁 View Only</span>
+      <span style={{ fontWeight: 700 }}>{isShareMode ? '📋 Project Schedule' : '👁 View Only'}</span>
       <span style={{ color: 'var(--text-muted)' }}>·</span>
-      <span style={{ color: 'var(--text-muted)' }}>Data snapshot from {dateStr}</span>
+      <span style={{ color: 'var(--text-muted)' }}>Last updated {dateStr}</span>
     </div>
   );
 }
@@ -155,7 +156,7 @@ function MobileProjectPicker({ projects, selectedProjectId, onSelect }) {
 }
 
 export default function AppReadOnly() {
-  const { projects, allTasks, resources, loading, error, exportedAt, colState } = useStaticData();
+  const { projects, allTasks, resources, loading, error, exportedAt, colState, isShareMode } = useStaticData();
   const device = useDevice();
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
@@ -169,22 +170,31 @@ export default function AppReadOnly() {
     }
   }, [projects, selectedProjectId]);
 
+  // In share mode, set the page title to the project name
+  React.useEffect(() => {
+    if (isShareMode && projects[0]?.name) {
+      document.title = `${projects[0].name} — Schedule`;
+    }
+  }, [isShareMode, projects]);
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
   const tasks           = allTasks[selectedProjectId]  ?? [];
 
   return (
     <>
-      <ReadOnlyBanner exportedAt={exportedAt} />
+      <ReadOnlyBanner exportedAt={exportedAt} isShareMode={isShareMode} />
 
       {/* Push content down by banner height */}
       <div className="app-layout" style={{ paddingTop: 28 }}>
-        {/* Sidebar — hidden on mobile via CSS, shown on tablet/desktop */}
-        <Sidebar
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
-          readOnly
-        />
+        {/* Sidebar — hidden in share mode (single-project view for the customer) */}
+        {!isShareMode && (
+          <Sidebar
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            readOnly
+          />
+        )}
 
         <div className="main-content">
           <Header
