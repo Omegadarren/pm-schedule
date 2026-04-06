@@ -267,11 +267,6 @@ export default function App() {
   // Templates
   const { templates, saveAsTemplate, createFromTemplate, deleteTemplate, refetch: refetchTemplates } = useTemplates();
 
-  const handleMasterUpdate = useCallback(async (id, data) => {
-    await updateTask(id, data);
-    refetchAll();
-  }, [updateTask, refetchAll]);
-
   const handleCreateFromTemplate = useCallback(async (templateId, form) => {
     const { project } = await createFromTemplate(templateId, form);
     await refetchProjects();
@@ -295,6 +290,11 @@ export default function App() {
 
   // All tasks for master schedule view
   const { allTasks, loading: masterLoading, refetch: refetchAll } = useAllTasks(isMaster);
+
+  const handleMasterUpdate = useCallback(async (id, data) => {
+    await updateTask(id, data);
+    refetchAll();
+  }, [updateTask, refetchAll]);
 
   // Realtime Socket.IO (no room when master)
   const { connected } = useSocket(isMaster ? null : selectedProjectId, {
