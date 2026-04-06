@@ -257,6 +257,7 @@ export default function MasterGrid({ tasks, onUpdate }) {
 
       <div className="ag-theme-alpine-dark" style={{ flex: 1, width: '100%' }}>
         <AgGridReact
+          key={sortMode}
           rowData={rows}
           columnDefs={columnDefs}
           defaultColDef={{ resizable: true, sortable: false }}
