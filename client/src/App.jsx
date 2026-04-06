@@ -265,7 +265,7 @@ export default function App() {
   const { projects, createProject, renameProject, updateProject, deleteProject, syncProject, refetch: refetchProjects } = useProjects();
 
   // Templates
-  const { templates, saveAsTemplate, createFromTemplate, deleteTemplate } = useTemplates();
+  const { templates, saveAsTemplate, createFromTemplate, deleteTemplate, refetch: refetchTemplates } = useTemplates();
 
   const handleCreateFromTemplate = useCallback(async (templateId, form) => {
     const { project } = await createFromTemplate(templateId, form);
@@ -486,6 +486,7 @@ export default function App() {
         onSaveAsTemplate={saveAsTemplate}
         onCreateFromTemplate={handleCreateFromTemplate}
         onDeleteTemplate={deleteTemplate}
+        onRefetchTemplates={refetchTemplates}
       />
 
       <div className="main-content">

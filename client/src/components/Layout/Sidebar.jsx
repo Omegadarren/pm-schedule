@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import TemplateEditorModal from '../TemplateEditorModal.jsx';
 
 const PROJECT_ICONS = { active: '🟢', on_hold: '🟡', complete: '✅', archived: '⬛' };
 const STATUS_OPTIONS = [
@@ -299,7 +300,7 @@ function DeleteConfirmModal({ project, onConfirm, onClose }) {  return (
   );
 }
 
-export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject, templates = [], onSaveAsTemplate, onCreateFromTemplate, onDeleteTemplate, readOnly = false }) {
+export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject, templates = [], onSaveAsTemplate, onCreateFromTemplate, onDeleteTemplate, onRefetchTemplates, readOnly = false }) {
   const [showModal, setShowModal] = useState(false);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, projectId }
   const [renamingId, setRenamingId] = useState(null);
@@ -309,6 +310,7 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
   const [saveAsTemplateProject, setSaveAsTemplateProject] = useState(null);
   const [useTemplateModal, setUseTemplateModal] = useState(null); // template object
   const [templateContextMenu, setTemplateContextMenu] = useState(null); // { x, y, templateId }
+  const [editTemplateId, setEditTemplateId] = useState(null);
   const renameInputRef = useRef(null);
 
   useEffect(() => {
@@ -521,6 +523,14 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
         />
       )}
 
+      {editTemplateId && (
+        <TemplateEditorModal
+          templateId={editTemplateId}
+          onSaved={() => { onRefetchTemplates?.(); }}
+          onClose={() => setEditTemplateId(null)}
+        />
+      )}
+
       {/* Template right-click context menu */}
       {templateContextMenu && (() => {
         const tpl = templates.find((t) => t.id === templateContextMenu.templateId);
@@ -535,6 +545,18 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <div
+              style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary, #f1f5f9)', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-tertiary, #334155)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              onClick={() => {
+                setEditTemplateId(tpl.id);
+                setTemplateContextMenu(null);
+              }}
+            >
+              ✏️ Edit Template
+            </div>
+            <div style={{ borderTop: '1px solid var(--border, #334155)', margin: '4px 0' }} />
             <div
               style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: '#f87171', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}

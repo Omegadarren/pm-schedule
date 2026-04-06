@@ -154,4 +154,56 @@ router.delete('/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// PUT /api/templates/:id — rename / update template metadata
+router.put('/:id', (req, res) => {
+  const db = getDb();
+  const { name, description } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  db.prepare('UPDATE templates SET name = ?, description = ? WHERE id = ?')
+    .run(name, description ?? '', req.params.id);
+  const template = db.prepare(`
+    SELECT t.*, COUNT(tt.id) as task_count
+    FROM templates t LEFT JOIN template_tasks tt ON tt.template_id = t.id
+    WHERE t.id = ? GROUP BY t.id
+  `).get(req.params.id);
+  res.json(template);
+});
+
+// PUT /api/templates/:id/tasks — bulk-replace all tasks for a template
+router.put('/:id/tasks', (req, res) => {
+  const db = getDb();
+  const template = db.prepare('SELECT id FROM templates WHERE id = ?').get(req.params.id);
+  if (!template) return res.status(404).json({ error: 'Template not found' });
+
+  const { tasks = [] } = req.body;
+
+  const doReplace = db.transaction(() => {
+    db.prepare('DELETE FROM template_tasks WHERE template_id = ?').run(req.params.id);
+    const ins = db.prepare(`
+      INSERT INTO template_tasks
+        (id, template_id, wbs, name, duration_days, priority, notes, row_order, predecessor_ids)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    tasks.forEach((t, i) => {
+      ins.run(
+        t.id || uuidv4(),
+        req.params.id,
+        t.wbs || null,
+        t.name,
+        parseInt(t.duration_days) || 1,
+        t.priority || 'medium',
+        t.notes || null,
+        i,
+        '[]'
+      );
+    });
+  });
+
+  doReplace();
+  const updated = db.prepare(
+    'SELECT * FROM template_tasks WHERE template_id = ? ORDER BY row_order ASC'
+  ).all(req.params.id);
+  res.json(updated);
+});
+
 module.exports = router;
