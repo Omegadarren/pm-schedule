@@ -120,6 +120,29 @@ function initDb() {
   try { db.exec(`ALTER TABLE tasks ADD COLUMN payment_status TEXT DEFAULT NULL`); } catch (_) {}
   try { db.exec('ALTER TABLE tasks ADD COLUMN actual REAL DEFAULT 0'); } catch (_) {}
 
+  // Templates
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS templates (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS template_tasks (
+      id                TEXT PRIMARY KEY,
+      template_id       TEXT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+      parent_task_id    TEXT,
+      wbs               TEXT,
+      name              TEXT NOT NULL,
+      duration_days     INTEGER DEFAULT 1,
+      priority          TEXT DEFAULT 'medium',
+      notes             TEXT,
+      row_order         INTEGER DEFAULT 0,
+      predecessor_ids   TEXT DEFAULT '[]'
+    );
+  `);
+
   console.log('[DB] Database initialized:', DB_PATH);
 }
 

@@ -5,7 +5,7 @@ import TaskGrid from './components/Grid/TaskGrid.jsx';
 import GanttView from './components/Gantt/GanttView.jsx';
 import MasterGrid from './components/MasterSchedule/MasterGrid.jsx';
 import MasterGantt from './components/MasterSchedule/MasterGantt.jsx';
-import { useTasks, useProjects, useAllTasks } from './hooks/useTasks.js';
+import { useTasks, useProjects, useAllTasks, useTemplates } from './hooks/useTasks.js';
 import { useSocket } from './hooks/useSocket.js';
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -262,7 +262,17 @@ export default function App() {
   const isMaster = selectedProjectId === '__master__';
 
   // Projects
-  const { projects, createProject, renameProject, updateProject, deleteProject, syncProject } = useProjects();
+  const { projects, createProject, renameProject, updateProject, deleteProject, syncProject, refetch: refetchProjects } = useProjects();
+
+  // Templates
+  const { templates, saveAsTemplate, createFromTemplate, deleteTemplate } = useTemplates();
+
+  const handleCreateFromTemplate = useCallback(async (templateId, form) => {
+    const { project } = await createFromTemplate(templateId, form);
+    await refetchProjects();
+    setSelectedProjectId(project.id);
+    setActiveTab('grid');
+  }, [createFromTemplate, refetchProjects]);
 
   // Auto-select first project if none selected
   React.useEffect(() => {
@@ -472,6 +482,10 @@ export default function App() {
           deleteProject(id);
           if (selectedProjectId === id) setSelectedProjectId(null);
         }}
+        templates={templates}
+        onSaveAsTemplate={saveAsTemplate}
+        onCreateFromTemplate={handleCreateFromTemplate}
+        onDeleteTemplate={deleteTemplate}
       />
 
       <div className="main-content">

@@ -142,3 +142,34 @@ export function useAllTasks(enabled = false) {
 
   return { allTasks, loading, refetch: fetchAll };
 }
+
+export function useTemplates() {
+  const [templates, setTemplates] = useState([]);
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/api/templates');
+      setTemplates(data);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+
+  const saveAsTemplate = useCallback(async (projectId, name, description = '') => {
+    const { data } = await axios.post(`/api/templates/from-project/${projectId}`, { name, description });
+    setTemplates((prev) => [...prev, data]);
+    return data;
+  }, []);
+
+  const createFromTemplate = useCallback(async (templateId, form) => {
+    const { data } = await axios.post(`/api/templates/${templateId}/create-project`, form);
+    return data; // { project, tasks }
+  }, []);
+
+  const deleteTemplate = useCallback(async (id) => {
+    await axios.delete(`/api/templates/${id}`);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  return { templates, saveAsTemplate, createFromTemplate, deleteTemplate, refetch: fetchTemplates };
+}

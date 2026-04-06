@@ -175,8 +175,105 @@ function ProjectPropertiesModal({ project, onSave, onClose }) {
   );
 }
 
-function DeleteConfirmModal({ project, onConfirm, onClose }) {
+// ── Save-as-Template modal ────────────────────────────────────────────────────
+function SaveAsTemplateModal({ project, onSave, onClose }) {
+  const [name, setName] = useState(project.name);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave(project.id, name.trim());
+    setSaving(false);
+    onClose();
+  };
+
   return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: 360 }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ marginTop: 0 }}>📋 Save as Template</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+          Saves the task structure of <strong style={{ color: 'var(--text)' }}>{project.name}</strong> as a reusable template. Dates and progress are not copied.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Template Name *</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Standard Build, Interior Fit-out…"
+            />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : 'Save Template'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── New-from-Template modal ───────────────────────────────────────────────────
+function NewFromTemplateModal({ template, onCreate, onClose }) {
+  const [form, setForm] = useState({ name: '', start_date: '', end_date: '' });
+  const [creating, setCreating] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setCreating(true);
+    await onCreate(template.id, form);
+    setCreating(false);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ width: 400 }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ marginTop: 0 }}>New Project from Template</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+          Template: <strong style={{ color: 'var(--text)' }}>{template.name}</strong>
+          <span style={{ marginLeft: 8, color: 'var(--text-muted)' }}>({template.task_count} tasks)</span>
+        </p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Project Name *</label>
+            <input
+              autoFocus
+              value={form.name}
+              onChange={set('name')}
+              placeholder="e.g. Smith Project"
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label>Start Date</label>
+              <input type="date" value={form.start_date} onChange={set('start_date')} />
+            </div>
+            <div className="form-group">
+              <label>End Date</label>
+              <input type="date" value={form.end_date} onChange={set('end_date')} />
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={creating}>
+              {creating ? 'Creating…' : 'Create Project'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ project, onConfirm, onClose }) {  return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ width: 380, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🗑️</div>
@@ -202,17 +299,20 @@ function DeleteConfirmModal({ project, onConfirm, onClose }) {
   );
 }
 
-export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject, readOnly = false }) {
+export default function Sidebar({ projects, selectedProjectId, onSelectProject, onCreateProject, onRenameProject, onUpdateProject, onDeleteProject, templates = [], onSaveAsTemplate, onCreateFromTemplate, onDeleteTemplate, readOnly = false }) {
   const [showModal, setShowModal] = useState(false);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, projectId }
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [propsProject, setPropsProject] = useState(null);
   const [deleteProject, setDeleteProject] = useState(null);
+  const [saveAsTemplateProject, setSaveAsTemplateProject] = useState(null);
+  const [useTemplateModal, setUseTemplateModal] = useState(null); // template object
+  const [templateContextMenu, setTemplateContextMenu] = useState(null); // { x, y, templateId }
   const renameInputRef = useRef(null);
 
   useEffect(() => {
-    const close = () => setContextMenu(null);
+    const close = () => { setContextMenu(null); setTemplateContextMenu(null); };
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
   }, []);
@@ -306,6 +406,38 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
           </button>
         )}
 
+        {/* ── Templates section ── */}
+        {!readOnly && templates.length > 0 && (
+          <>
+            <div style={{ borderTop: '1px solid var(--border)', margin: '8px 8px 0' }} />
+            <div className="sidebar-section-title" style={{ marginTop: 8 }}>Templates</div>
+            {templates.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="sidebar-item"
+                style={{ justifyContent: 'space-between', cursor: 'pointer' }}
+                onClick={() => setUseTemplateModal(tpl)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTemplateContextMenu({ x: e.clientX, y: e.clientY, templateId: tpl.id });
+                }}
+                title={`${tpl.task_count} tasks — click to create project`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span>📋</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tpl.name}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 6 }}>
+                  {tpl.task_count}t
+                </span>
+              </div>
+            ))}
+          </>
+        )}
+
         <div style={{ flex: 1 }} />
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
@@ -350,6 +482,7 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
           >
             {menuItem('✏️', 'Rename', () => { if (ctxProj) startRename(ctxProj); })}
             {menuItem('⚙️', 'Properties', () => { setPropsProject(ctxProj); setContextMenu(null); })}
+            {menuItem('📋', 'Save as Template', () => { setSaveAsTemplateProject(ctxProj); setContextMenu(null); })}
             <div style={{ borderTop: '1px solid var(--border, #334155)', margin: '4px 0' }} />
             {menuItem('🗑️', 'Delete Project', () => { setDeleteProject(ctxProj); setContextMenu(null); }, true)}
           </div>
@@ -371,6 +504,53 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
           onClose={() => setDeleteProject(null)}
         />
       )}
+
+      {saveAsTemplateProject && (
+        <SaveAsTemplateModal
+          project={saveAsTemplateProject}
+          onSave={onSaveAsTemplate}
+          onClose={() => setSaveAsTemplateProject(null)}
+        />
+      )}
+
+      {useTemplateModal && (
+        <NewFromTemplateModal
+          template={useTemplateModal}
+          onCreate={onCreateFromTemplate}
+          onClose={() => setUseTemplateModal(null)}
+        />
+      )}
+
+      {/* Template right-click context menu */}
+      {templateContextMenu && (() => {
+        const tpl = templates.find((t) => t.id === templateContextMenu.templateId);
+        return (
+          <div
+            style={{
+              position: 'fixed', top: templateContextMenu.y, left: templateContextMenu.x,
+              background: 'var(--bg-secondary, #1e293b)',
+              border: '1px solid var(--border, #334155)',
+              borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              zIndex: 9999, minWidth: 160, padding: '4px 0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: '#f87171', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              onClick={() => {
+                if (tpl && window.confirm(`Delete template "${tpl.name}"?`)) {
+                  onDeleteTemplate(tpl.id);
+                }
+                setTemplateContextMenu(null);
+              }}
+            >
+              🗑️ Delete Template
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
