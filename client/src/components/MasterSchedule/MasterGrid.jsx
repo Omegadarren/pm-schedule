@@ -34,6 +34,7 @@ function buildProjectRows(tasks) {
 
 function buildDateRows(tasks) {
   return [...tasks]
+    .filter((t) => !t._isProjectHeader)
     .sort((a, b) => {
       if (!a.start_date && !b.start_date) return 0;
       if (!a.start_date) return 1;
