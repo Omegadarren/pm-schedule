@@ -167,22 +167,24 @@ export default function MasterGrid({ tasks, onUpdate }) {
   const [sortMode, setSortMode] = useState('project'); // 'project' | 'date'
   const [saving, setSaving] = useState(new Set());
 
-  const rows = useMemo(
-    () => sortMode === 'project' ? buildProjectRows(tasks) : buildDateRows(tasks),
-    [tasks, sortMode]
-  );
+  const projectRows = useMemo(() => buildProjectRows(tasks), [tasks]);
+  const dateRows    = useMemo(() => buildDateRows(tasks),    [tasks]);
 
   const columnDefs = useMemo(() => buildColumnDefs(sortMode), [sortMode]);
 
-  const getRowStyle = useCallback((params) => {
+  const projectRowStyle = useCallback((params) => {
     if (params.data?._isProjectHeader) {
       return { background: `${params.data._projectColor}1a`, borderLeft: `3px solid ${params.data._projectColor}` };
     }
-    if (sortMode === 'date' && params.data?._projectColor) {
+    return null;
+  }, []);
+
+  const dateRowStyle = useCallback((params) => {
+    if (params.data?._projectColor) {
       return { borderLeft: `3px solid ${params.data._projectColor}44` };
     }
     return null;
-  }, [sortMode]);
+  }, []);
 
   const getRowHeight = useCallback(
     (params) => (params.data?._isProjectHeader ? 42 : 36),
@@ -223,6 +225,17 @@ export default function MasterGrid({ tasks, onUpdate }) {
     );
   }
 
+  const sharedGridProps = {
+    columnDefs,
+    defaultColDef: { resizable: true, sortable: false },
+    getRowHeight,
+    onCellValueChanged,
+    singleClickEdit: true,
+    stopEditingWhenCellsLoseFocus: true,
+    headerHeight: 36,
+    animateRows: false,
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
@@ -255,21 +268,17 @@ export default function MasterGrid({ tasks, onUpdate }) {
         )}
       </div>
 
-      <div className="ag-theme-alpine-dark" style={{ flex: 1, width: '100%' }}>
-        <AgGridReact
-          key={sortMode}
-          rowData={rows}
-          columnDefs={columnDefs}
-          defaultColDef={{ resizable: true, sortable: false }}
-          getRowStyle={getRowStyle}
-          getRowHeight={getRowHeight}
-          onCellValueChanged={onCellValueChanged}
-          singleClickEdit
-          stopEditingWhenCellsLoseFocus
-          headerHeight={36}
-          animateRows={false}
-        />
-      </div>
+      {sortMode === 'project' && (
+        <div className="ag-theme-alpine-dark" style={{ flex: 1, width: '100%' }}>
+          <AgGridReact {...sharedGridProps} rowData={projectRows} getRowStyle={projectRowStyle} />
+        </div>
+      )}
+
+      {sortMode === 'date' && (
+        <div className="ag-theme-alpine-dark" style={{ flex: 1, width: '100%' }}>
+          <AgGridReact {...sharedGridProps} rowData={dateRows} getRowStyle={dateRowStyle} />
+        </div>
+      )}
     </div>
   );
 }
