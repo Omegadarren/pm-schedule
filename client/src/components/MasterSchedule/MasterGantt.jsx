@@ -4,7 +4,7 @@ import 'frappe-gantt/dist/frappe-gantt.css';
 
 const VIEW_MODES = ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'];
 
-export default function MasterGantt({ tasks }) {
+export default function MasterGantt({ tasks, onUpdate }) {
   const containerRef = useRef(null);
   const ganttRef     = useRef(null);
   const [viewMode, setViewMode] = useState('Week');
@@ -76,8 +76,12 @@ export default function MasterGantt({ tasks }) {
       date_format: 'YYYY-MM-DD',
       language:    'en',
       on_click:            () => {},
-      on_date_change:      () => {},
-      on_progress_change:  () => {},
+      on_date_change:      (task, start, end) => {
+        if (onUpdate) onUpdate(task.id, { start_date: start, end_date: end });
+      },
+      on_progress_change:  (task, progress) => {
+        if (onUpdate) onUpdate(task.id, { percent_complete: Math.round(progress) });
+      },
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ganttTasks]);

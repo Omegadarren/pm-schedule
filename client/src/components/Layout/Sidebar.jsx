@@ -443,7 +443,7 @@ export default function Sidebar({ projects, selectedProjectId, onSelectProject, 
         <div style={{ flex: 1 }} />
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
-          {readOnly ? '👁 View Only' : 'PM Schedule v1.0'}
+          {readOnly ? '👁 View Only' : 'PM Schedule v1.1'}
         </div>
       </aside>
 

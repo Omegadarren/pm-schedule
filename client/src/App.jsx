@@ -267,6 +267,11 @@ export default function App() {
   // Templates
   const { templates, saveAsTemplate, createFromTemplate, deleteTemplate, refetch: refetchTemplates } = useTemplates();
 
+  const handleMasterUpdate = useCallback(async (id, data) => {
+    await updateTask(id, data);
+    refetchAll();
+  }, [updateTask, refetchAll]);
+
   const handleCreateFromTemplate = useCallback(async (templateId, form) => {
     const { project } = await createFromTemplate(templateId, form);
     await refetchProjects();
@@ -510,8 +515,8 @@ export default function App() {
               <div className="loading">Loading all projects…</div>
             ) : (
               <>
-                {activeTab === 'grid' && <MasterGrid tasks={allTasks} />}
-                {activeTab === 'gantt' && <MasterGantt tasks={allTasks} />}
+                {activeTab === 'grid' && <MasterGrid tasks={allTasks} onUpdate={handleMasterUpdate} />}
+                {activeTab === 'gantt' && <MasterGantt tasks={allTasks} onUpdate={handleMasterUpdate} />}
               </>
             )
           ) : !selectedProjectId ? (
